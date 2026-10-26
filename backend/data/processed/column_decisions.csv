@@ -1,0 +1,50 @@
+dataset,column,decision,used_as,reason
+Stage 2 (startup data.csv),status,target source,failed,"closed = 1 (failure), acquired = 0. No IPO rows exist in this file."
+Stage 2 (startup data.csv),labels,dropped,-,"Same information as status (acquired = 1), so it is the answer itself."
+Stage 2 (startup data.csv),closed_at,dropped (leak),-,"Filled for 326 closed and 9 acquired startups, so it gives away the outcome."
+Stage 2 (startup data.csv),is_top500,held out,-,Closed rate is 28% when 1 but 66% when 0. Looks like an after-the-fact flag. Adding it gave no AUC gain.
+Stage 2 (startup data.csv),Unnamed: 0,dropped,-,Identifiers. Not features.
+Stage 2 (startup data.csv),id,dropped,-,Identifiers. Not features.
+Stage 2 (startup data.csv),object_id,dropped,-,Identifiers. Not features.
+Stage 2 (startup data.csv),name,dropped,-,Identifiers. Not features.
+Stage 2 (startup data.csv),Unnamed: 6,dropped,-,Too specific (near-identifiers) or duplicates of state_code.
+Stage 2 (startup data.csv),zip_code,dropped,-,Too specific (near-identifiers) or duplicates of state_code.
+Stage 2 (startup data.csv),city,dropped,-,Too specific (near-identifiers) or duplicates of state_code.
+Stage 2 (startup data.csv),latitude,dropped,-,Too specific (near-identifiers) or duplicates of state_code.
+Stage 2 (startup data.csv),longitude,dropped,-,Too specific (near-identifiers) or duplicates of state_code.
+Stage 2 (startup data.csv),state_code.1,dropped,-,Too specific (near-identifiers) or duplicates of state_code.
+Stage 2 (startup data.csv),state_code,kept,state,Rare states (under 10 rows) merged into OTHER. Used by Stage 2.
+Stage 2 (startup data.csv),category_code,kept,category,Rare categories (under 10 rows) merged into other. Used by Stage 2.
+Stage 2 (startup data.csv),founded_at,kept as year (not a feature),founded_year,"Only used for the time-based check. As a feature it mostly measures time, not risk."
+Stage 2 (startup data.csv),first_funding_at,dropped,-,Raw dates. The age_*_funding_year columns already hold this.
+Stage 2 (startup data.csv),last_funding_at,dropped,-,Raw dates. The age_*_funding_year columns already hold this.
+Stage 2 (startup data.csv),is_CA,dropped,-,Duplicates of state.
+Stage 2 (startup data.csv),is_NY,dropped,-,Duplicates of state.
+Stage 2 (startup data.csv),is_MA,dropped,-,Duplicates of state.
+Stage 2 (startup data.csv),is_TX,dropped,-,Duplicates of state.
+Stage 2 (startup data.csv),is_otherstate,dropped,-,Duplicates of state.
+Stage 2 (startup data.csv),is_software,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_web,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_mobile,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_enterprise,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_advertising,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_gamesvideo,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_ecommerce,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_biotech,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_consulting,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),is_othercategory,dropped,-,Duplicates of category.
+Stage 2 (startup data.csv),funding_total_usd,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),funding_rounds,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),has_VC,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),has_angel,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),has_roundA,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),has_roundB,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),has_roundC,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),has_roundD,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),avg_participants,kept,Stage 2 feature,Funding signals. Only known once the startup has raised money.
+Stage 2 (startup data.csv),relationships,kept (caution),Stage 2 feature,"Strongest signal. It counts people linked to the company at snapshot time, so part of it may reflect success after the fact."
+Stage 2 (startup data.csv),age_first_funding_year,kept,Stage 2 feature,Funding timing. A few negative values (funding dated before founding) are kept as-is.
+Stage 2 (startup data.csv),age_last_funding_year,kept,Stage 2 feature,Funding timing. A few negative values (funding dated before founding) are kept as-is.
+Stage 2 (startup data.csv),milestones,held out (leak risk),-,Milestones can record the acquisition itself (e.g. 'X completes acquisition of Y'). Removing them cost only about 0.01 AUC.
+Stage 2 (startup data.csv),age_first_milestone_year,held out (leak risk),-,Milestones can record the acquisition itself (e.g. 'X completes acquisition of Y'). Removing them cost only about 0.01 AUC.
+Stage 2 (startup data.csv),age_last_milestone_year,held out (leak risk),-,Milestones can record the acquisition itself (e.g. 'X completes acquisition of Y'). Removing them cost only about 0.01 AUC.

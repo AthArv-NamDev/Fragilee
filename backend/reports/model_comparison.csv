@@ -1,0 +1,9 @@
+stage,model,auc_mean,auc_std,avg_precision,brier
+stage1,Logistic Regression,0.667,0.018,0.578,0.218
+stage1,Random Forest,0.666,0.021,0.573,0.219
+stage1,XGBoost (default),0.67,0.016,0.579,0.216
+stage1,XGBoost (tuned),0.671,0.015,0.579,0.226
+stage2,Logistic Regression,0.757,0.042,0.653,0.187
+stage2,Random Forest,0.807,0.04,0.757,0.162
+stage2,XGBoost (default),0.806,0.037,0.761,0.162
+stage2,XGBoost (tuned),0.815,0.038,0.766,0.157

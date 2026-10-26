@@ -1,0 +1,51 @@
+stage,feature,mean_abs_shap,group
+stage1,country=USA,0.2001,Location
+stage1,tag=Biotechnology,0.1207,Market
+stage1,tag=Software,0.099,Market
+stage1,tag=Enterprise Software,0.0738,Market
+stage1,country=RUS,0.0557,Location
+stage1,tag=Social Media,0.0527,Market
+stage1,tag=Curated Web,0.0446,Market
+stage1,tag=Security,0.0355,Market
+stage1,state=OTHER,0.0352,Location
+stage1,tag=Analytics,0.0343,Market
+stage1,n_tags,0.0338,Market
+stage1,tag=Services,0.0311,Market
+stage1,tag=Health Care,0.0294,Market
+stage1,tag=Semiconductors,0.0284,Market
+stage1,state=MA,0.0272,Location
+stage1,country=OTHER,0.0256,Location
+stage1,tag=Advertising,0.0245,Market
+stage1,state=NONE,0.0213,Location
+stage1,tag=Web Hosting,0.0205,Market
+stage1,state=CA,0.0142,Location
+stage1,country=CHN,0.0129,Location
+stage1,tag=Mobile,0.0127,Market
+stage1,tag=Music,0.0115,Market
+stage1,country=CAN,0.0109,Location
+stage1,country=ISR,0.0104,Location
+stage2,relationships,0.8862,Traction
+stage2,funding_total_usd,0.2964,Funding
+stage2,avg_participants,0.212,Funding
+stage2,age_first_funding_year,0.1953,Funding
+stage2,age_last_funding_year,0.17,Funding
+stage2,funding_rounds,0.1413,Funding
+stage2,has_VC,0.0865,Funding
+stage2,state=MA,0.0307,Location
+stage2,category=hardware,0.0256,Market
+stage2,has_roundD,0.0165,Funding
+stage2,category=public_relations,0.0163,Market
+stage2,state=NY,0.0146,Location
+stage2,state=TX,0.0144,Location
+stage2,state=OTHER,0.0144,Location
+stage2,category=cleantech,0.0122,Market
+stage2,category=ecommerce,0.0116,Market
+stage2,category=web,0.0095,Market
+stage2,state=CA,0.0074,Location
+stage2,has_angel,0.007,Funding
+stage2,category=other,0.0069,Market
+stage2,state=CO,0.0062,Location
+stage2,category=games_video,0.0058,Market
+stage2,category=semiconductor,0.0051,Market
+stage2,category=software,0.0049,Market
+stage2,category=mobile,0.0047,Market

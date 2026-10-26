@@ -1,0 +1,7 @@
+stage,dropped_group,auc,change_vs_all
+stage1,Location,0.64,-0.03
+stage1,Market,0.612,-0.058
+stage2,Funding,0.767,-0.044
+stage2,Location,0.809,-0.002
+stage2,Market,0.813,0.002
+stage2,Traction,0.739,-0.072

@@ -1,0 +1,17 @@
+stage,set,band,n,mean_predicted,observed_failure_rate
+stage1,train out-of-fold,Low,2188,0.22,0.218
+stage1,train out-of-fold,Medium,2188,0.336,0.343
+stage1,train out-of-fold,High,2181,0.421,0.413
+stage1,train out-of-fold,Critical,2195,0.586,0.589
+stage1,test,Low,525,0.219,0.198
+stage1,test,Medium,543,0.338,0.319
+stage1,test,High,582,0.418,0.474
+stage1,test,Critical,539,0.577,0.562
+stage2,train out-of-fold,Low,184,0.096,0.109
+stage2,train out-of-fold,Medium,184,0.197,0.174
+stage2,train out-of-fold,High,184,0.369,0.386
+stage2,train out-of-fold,Critical,185,0.753,0.746
+stage2,test,Low,35,0.093,0.086
+stage2,test,Medium,58,0.207,0.241
+stage2,test,High,39,0.374,0.282
+stage2,test,Critical,53,0.775,0.698

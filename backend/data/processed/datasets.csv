@@ -1,0 +1,2 @@
+dataset,file,rows_used,label,failure_share,used_for,limitations
+Kaggle Startup Success Prediction,startup data.csv,922,"1 = closed, 0 = acquired",0.354,Stage 2 (funding and traction),US only. 922 rows. Only startups with a final outcome. Snapshot counts (relationships) may reflect later success.

@@ -1,0 +1,38 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import { supabaseEnv } from "./env";
+
+// Pages that need a login. Add new private screens here.
+const PROTECTED = ["/dashboard", "/new", "/analysis", "/settings"];
+
+export async function updateSession(request: NextRequest) {
+  let response = NextResponse.next({ request });
+  const { url, key } = supabaseEnv();
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+      },
+    },
+  });
+
+  // Do not put code between createServerClient and getClaims(). getClaims() checks the token's signature,
+  // unlike getSession(), which only reads the cookie.
+  const { data } = await supabase.auth.getClaims();
+  const signedIn = Boolean(data?.claims);
+  const path = request.nextUrl.pathname;
+
+  const goTo = (to: string) => {
+    const redirect = NextResponse.redirect(new URL(to, request.url));
+    response.cookies.getAll().forEach((c) => redirect.cookies.set(c)); // keep any refreshed session cookies
+    return redirect;
+  };
+
+  if (!signedIn && PROTECTED.some((p) => path === p || path.startsWith(p + "/"))) return goTo("/login");
+  if (signedIn && path === "/login") return goTo("/dashboard");
+  return response;
+}

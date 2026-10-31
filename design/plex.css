@@ -1,0 +1,28 @@
+.hero{padding:8px 0 20px}.hero p{max-width:60ch;margin-top:10px}
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 22px}
+.tabs button{padding:10px 18px;border-radius:999px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--violet-soft);border-color:var(--violet)}
+.proto{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start;padding-bottom:48px}
+.stage{padding:8px;overflow-x:auto}.stage svg{display:block;width:100%;min-width:680px;height:auto}
+.panel{display:flex;flex-direction:column;gap:18px}.panel .card{padding:20px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px}
+#detail p{margin-top:8px;font-size:14px}
+.hint{font-size:13px;margin-top:10px;padding:0 8px 6px}
+.node{cursor:pointer;outline:none}.node[aria-disabled=true]{cursor:not-allowed}
+.node:focus-visible circle{stroke:#fff;stroke-width:5}
+.node .gl{text-anchor:middle;fill:#fff;font-family:var(--body);font-weight:700;pointer-events:none}
+.node .lb{fill:var(--text);font-family:var(--display);font-size:15px;paint-order:stroke;stroke:var(--bg);stroke-width:6px;stroke-linejoin:round}
+.node .sb{fill:var(--muted);font-size:13px;paint-order:stroke;stroke:var(--bg);stroke-width:5px;stroke-linejoin:round}
+.node[data-role=active] .lb{font-size:21px}.node[data-role=active] .sb{font-size:15px}
+.node[data-role=parent] .lb{font-size:15px;fill:var(--muted)}
+.node[data-role=sib] .lb,.node[data-role=sib] .sb{font-size:13px}
+.ol,.ol ul{list-style:none}.ol ul{margin-left:16px;border-left:1px solid var(--line);padding-left:8px}
+.ol-btn{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:10px;border:0;background:none;color:var(--text);font-size:14px;text-align:left;cursor:pointer}
+.ol-btn:hover{background:var(--surface-2)}.ol-btn[aria-current=true]{background:var(--violet-soft)}
+.ol-btn:focus-visible,.tabs button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.ol-btn[aria-disabled=true]{color:var(--muted);cursor:not-allowed}
+.ol-btn em{margin-left:auto;font-style:normal;font-size:12px;color:var(--muted);white-space:nowrap}
+.dot.ghost{background:none;border:1.5px dashed var(--faint)}
+.foot{border-top:1px solid var(--line);padding:22px 0 40px;font-size:13px}
+@media screen and (max-width:980px){.proto{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}

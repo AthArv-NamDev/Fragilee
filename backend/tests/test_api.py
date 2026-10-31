@@ -1,5 +1,6 @@
 """Run from backend/:   pytest -q     (needs models/ from scripts/train.py)"""
 import json
+import re
 import shutil
 
 import pandas as pd
@@ -139,3 +140,70 @@ def test_feature_columns_match_trained_model():
     x2 = build_stage2(pd.DataFrame([{**STAGE2_OK, "category": e2["categories"][0], "state": "CA"}]),
                       e2["numeric"], e2["categories"], e2["states"])
     assert list(x1.columns) == e1["features"] and list(x2.columns) == e2["features"]
+
+
+# ---- v2 changes: optional Stage 2 state, benchmark label, clean numbers, plain limits ----
+def _without_state():
+    body = dict(STAGE2_OK)
+    body.pop("state")
+    return body
+
+
+def test_stage2_state_is_optional_and_means_other(client):
+    no_state = client.post("/v1/predict/stage2", json=_without_state())
+    explicit = client.post("/v1/predict/stage2", json={**STAGE2_OK, "state": "other"})   # any case
+    null_state = client.post("/v1/predict/stage2", json={**STAGE2_OK, "state": None})
+    assert no_state.status_code == explicit.status_code == null_state.status_code == 200
+    assert no_state.json() == explicit.json() == null_state.json()
+    assert not any("grouped" in n for n in no_state.json()["notes"])   # not an "unusual state", just not a listed one
+
+
+def test_stage2_unlisted_us_state_still_gets_the_grouped_note(client):
+    r = client.post("/v1/predict/stage2", json={**STAGE2_OK, "state": "ND"}).json()
+    assert any("other states" in n for n in r["notes"])
+
+
+@pytest.mark.parametrize("state", ["California", "C", "ABCDE", "C4", ""])
+def test_stage2_still_rejects_malformed_state(client, state):
+    assert client.post("/v1/predict/stage2", json={**STAGE2_OK, "state": state}).status_code == 422
+
+
+def test_benchmark_label_on_both_stages(client, meta):
+    s1 = client.post("/v1/predict/stage1", json=stage1_ok(meta)).json()
+    s2 = client.post("/v1/predict/stage2", json=STAGE2_OK).json()
+    assert s1["benchmark"] == "Worldwide data"
+    assert s2["benchmark"] == "US benchmark"
+
+
+def test_whole_number_factor_values_have_no_decimal_point(client, meta):
+    bodies = [STAGE2_OK, {**STAGE2_OK, "avg_participants": 3.0, "relationships": 40, "funding_rounds": 4}]
+    seen = []
+    for b in bodies:
+        r = client.post("/v1/predict/stage2", json=b)
+        assert not re.search(r'"value":\s*-?\d+\.0\b', r.text), r.text
+        seen += [f["value"] for br in r.json()["tree"]["children"] for f in br["factors"]]
+    assert any(isinstance(v, int) for v in seen), "expected at least one whole-number factor value"
+
+
+def test_fractional_factor_values_are_kept():
+    from app.scoring import display_value
+    assert display_value("avg_participants", 2.5) == 2.5
+    assert display_value("avg_participants", 2.0) == 2 and isinstance(display_value("avg_participants", 2.0), int)
+    assert display_value("relationships", 5.0) == 5
+    assert display_value("age_first_funding_year", 0.333) == 0.33
+
+
+def test_limitations_use_plain_language_not_auc(client, meta):
+    for r in (client.post("/v1/predict/stage1", json=stage1_ok(meta)).json(),
+              client.post("/v1/predict/stage2", json=STAGE2_OK).json()):
+        text = " ".join(r["limitations"] + r["notes"] + [r["disclaimer"]])
+        assert "AUC" not in text and "cross-validated" not in text.lower()
+        assert "2013" in text                        # the data's age is always stated
+
+
+def test_saved_stage2_analysis_without_state_works(client):
+    from conftest import USER_A, headers_for
+    body = {"title": "No state", "stage": "stage2", "input": _without_state()}
+    r = client.post("/v1/analyses", json=body, headers=headers_for(USER_A))
+    assert r.status_code == 201, r.text
+    assert r.json()["result"]["benchmark"] == "US benchmark"

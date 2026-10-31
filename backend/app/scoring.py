@@ -31,6 +31,7 @@ FACTOR_LABELS = {
     "n_tags": "Number of industry tags",
 }
 GROUP_LABELS = {"Funding": "Funding", "Traction": "Traction", "Market": "Market", "Location": "Location"}
+BENCHMARKS = {"stage1": "Worldwide data", "stage2": "US benchmark"}   # Stage 2 was trained on US startups only
 DISCLAIMER = ("This shows patterns in historical startup data. It is not a prediction of your startup's future "
               "and not financial or legal advice.")
 
@@ -49,7 +50,8 @@ def display_value(feature: str, value: float):
         return "Yes"
     if feature == "funding_total_usd":
         return f"${value:,.0f}"
-    return round(float(value), 2)
+    v = float(value)
+    return int(v) if v.is_integer() else round(v, 2)       # 2.0 -> 2, but 2.5 stays 2.5
 
 
 def _stage(store: ModelStore, name: str):
@@ -96,6 +98,7 @@ def _predict(store, stage, X, notes, confidence, limitations):
         "stage": stage, "probability": round(p, 3), "band": band,
         "similar_startups_failure_rate": sm.entry["band_observed_failure_rate"][band],
         "base_failure_rate": sm.entry["failed_share"], "confidence": confidence,
+        "benchmark": BENCHMARKS[stage],
         "tree": {"label": f"Failure risk: {band}", "band": band, "probability": round(p, 3),
                  "children": _explain(sm, X, sv)},
         "notes": notes, "limitations": limitations, "disclaimer": DISCLAIMER,
@@ -113,8 +116,8 @@ def predict_stage1(store: ModelStore, req: Stage1Request) -> dict:
     notes = []
     if req.country not in e["countries"]:
         notes.append("Your country is grouped with 'other countries' because the data has few startups from it.")
-    limits = [f"Uses only industry and location. Cross-validated AUC {e['cv_auc']}, test AUC {e['test_auc']}: "
-              "it shows which kinds of startups closed more often, not what will happen to yours.",
+    limits = ["Uses only industry and location, so it tells startups apart only modestly better than chance. "
+              "It shows which kinds of startups closed more often, not what will happen to yours.",
               "Built from 2013-era data on startups that raised funding and had a final outcome (closed or exited)."]
     return _predict(store, "stage1", X, notes, "limited", limits)
 
@@ -134,10 +137,10 @@ def predict_stage2(store: ModelStore, req: Stage2Request) -> dict:
         if v < r["min"] or v > r["max"]:
             notes.append(f"{label_for(f)} is outside the range this model was trained on "
                          f"({r['min']:,.4g} to {r['max']:,.4g}). Treat the result with extra caution.")
-    if req.state != state:
+    if req.state not in (state, "OTHER"):
         notes.append("Your state is grouped with 'other states' because the data has few startups from it.")
-    limits = [f"Trained on {e['rows']} US startups. Cross-validated AUC {e['cv_auc']}, test AUC {e['test_auc']} "
-              f"(95% range {e['test_auc_ci'][0]} to {e['test_auc_ci'][1]}).",
+    limits = [f"Built from {e['rows']} US startups, a small sample. It separates closed from acquired startups "
+              "clearly better than chance, but it still gets many individual startups wrong.",
               "Business relationships is the strongest signal, and part of it may reflect success after the fact.",
               "The data only has startups with a final outcome (closed or acquired), from a 2013-era snapshot."]
     return _predict(store, "stage2", X, notes, "low" if notes else "moderate", limits)

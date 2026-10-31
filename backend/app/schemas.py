@@ -44,7 +44,9 @@ class Stage2Request(BaseModel):
             "age_first_funding_year": 1.0, "age_last_funding_year": 2.0}]})
 
     category: str = Field(pattern=r"^[A-Za-z0-9_ &-]{1,40}$", description="industry from /v1/meta")
-    state: str = Field(pattern=r"^[A-Za-z]{2,4}$", description="US state code")
+    state: str | None = Field(
+        default=None, pattern=r"^[A-Za-z]{2,5}$", validate_default=True,
+        description="US state code, or leave out / send OTHER for a startup outside the US or in an unlisted state")
     funding_total_usd: float = Field(ge=0, le=1e11)
     funding_rounds: int = Field(ge=1, le=30)
     has_VC: StrictBool
@@ -60,8 +62,11 @@ class Stage2Request(BaseModel):
 
     @field_validator("state")
     @classmethod
-    def upper(cls, v):
-        return v.upper()
+    def state_or_other(cls, v):
+        v = v.upper() if v else "OTHER"                  # missing means "not a listed US state"
+        if len(v) == 5 and v != "OTHER":                 # the pattern allows 5 letters only so OTHER fits
+            raise ValueError("state must be a 2 to 4 letter US state code, or OTHER")
+        return v
 
     @model_validator(mode="after")
     def order(self):
@@ -73,7 +78,7 @@ class Stage2Request(BaseModel):
 class Factor(BaseModel):
     feature: str
     label: str
-    value: str | float
+    value: str | int | float
     effect: Literal["raises risk", "lowers risk"]
     impact: float = Field(description="share of the total push on this prediction, 0 to 1")
 
@@ -101,6 +106,7 @@ class PredictionResponse(BaseModel):
     similar_startups_failure_rate: float = Field(description="share of training startups in this band that closed")
     base_failure_rate: float
     confidence: Literal["limited", "moderate", "low"]
+    benchmark: str = Field(description="who the comparison is made against, e.g. 'US benchmark'")
     tree: Tree
     notes: list[str]
     limitations: list[str]

@@ -51,7 +51,9 @@ def risk_group(feature: str) -> str:
     if feature.startswith(("country=", "state=")):
         return "Location"
     if feature.startswith(("category=", "tag=")) or feature == "n_tags":
-        return "Market"
+        # The trained inputs are industry labels and their count. They contain
+        # no direct market demand, competition or customer validation fields.
+        return "Industry"
     if feature == "relationships":
         return "Traction"
     return "Funding"
@@ -79,12 +81,3 @@ def assign_band(p, cutoffs):
     return BANDS[int(np.searchsorted(cutoffs, p, side="right"))]
 
 
-# ---- risk-tree branch severity ------------------------------------------------
-# A branch's net SHAP push is in log-odds. Low = no push or lowers risk. 0.25 roughly
-# multiplies the odds of closing by 1.3, and 0.75 by more than 2.
-BRANCH_CUTOFFS = [0.05, 0.25, 0.75]
-
-
-def branch_band(net_push: float) -> str:
-    """How strongly one group of factors pushes the failure risk UP."""
-    return assign_band(net_push, BRANCH_CUTOFFS)

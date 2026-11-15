@@ -1,0 +1,380 @@
+{
+ "_about": "Curated library of real startup failures, summarised in our own words from the linked sources. Add a case only after reading at least one reputable source. Each entry needs a published date and a verified_on date.",
+ "verified_on": "2026-11-04",
+ "cases": [
+  {
+   "id": "everpix",
+   "name": "Everpix",
+   "years": "2011 to 2013",
+   "sector": "Consumer photo storage app",
+   "what": "A subscription app that stored and organised people's photos in the cloud.",
+   "how_it_failed": "People rated it highly, but about 55,000 users did not bring in enough revenue to cover hosting and salaries. Investors wanted faster growth before writing bigger cheques, buyer talks went nowhere, and large companies offered free alternatives. A looming cloud bill forced the decision.",
+   "reasons": [
+    "Ran out of cash",
+    "Slow growth",
+    "Outcompeted"
+   ],
+   "industries": [
+    "Photography",
+    "Software",
+    "Mobile",
+    "Curated Web",
+    "Web Hosting"
+   ],
+   "keywords": [
+    "photo",
+    "photos",
+    "storage",
+    "cloud",
+    "subscription",
+    "app",
+    "images",
+    "backup",
+    "gallery"
+   ],
+   "sources": [
+    {
+     "title": "Goodbye Everpix: Photo storage startup shuts down as bills pile up",
+     "publisher": "VentureBeat",
+     "url": "https://venturebeat.com/technology/goodbye-everpix-photo-storage-startup-shuts-down-as-bills-pile-up",
+     "published": "2013-11-05",
+     "kind": "news report"
+    }
+   ],
+   "verified_on": "2026-11-04"
+  },
+  {
+   "id": "fab",
+   "name": "Fab",
+   "years": "2011 to 2014",
+   "sector": "Design e-commerce (flash sales)",
+   "what": "An online store selling design goods through daily flash sales.",
+   "how_it_failed": "It raised over $330 million and grew fast, but spent heavily on marketing, warehouses and aggressive international expansion. Investors warned about the cash burn and thin margins, a giant funding round fell short, most staff were laid off, and the assets were sold for far less than had been raised.",
+   "reasons": [
+    "Burned cash too fast",
+    "Over-expansion",
+    "Thin margins"
+   ],
+   "industries": [
+    "E-Commerce",
+    "Design",
+    "Fashion",
+    "Retail",
+    "Curated Web"
+   ],
+   "keywords": [
+    "shop",
+    "store",
+    "retail",
+    "marketplace",
+    "design",
+    "furniture",
+    "fashion",
+    "deals",
+    "ecommerce",
+    "products",
+    "goods"
+   ],
+   "sources": [
+    {
+     "title": "Fab was never a billion-dollar company",
+     "publisher": "Fortune",
+     "url": "https://fortune.com/2015/01/22/fab-billion-dollar-valuation/",
+     "published": "2015-01-22",
+     "kind": "news report"
+    }
+   ],
+   "verified_on": "2026-11-04"
+  },
+  {
+   "id": "homejoy",
+   "name": "Homejoy",
+   "years": "2010 to 2015",
+   "sector": "On-demand home cleaning marketplace",
+   "what": "A marketplace that booked home cleaners through an app and website.",
+   "how_it_failed": "Many customers did not book again after the first visit and the company struggled to keep its best cleaners. Losses mounted, an international expansion added cost, and lawsuits over whether cleaners were contractors or employees made raising new money hard.",
+   "reasons": [
+    "Weak customer retention",
+    "Legal or regulatory",
+    "Mounting losses"
+   ],
+   "industries": [
+    "Marketplaces",
+    "Services",
+    "E-Commerce",
+    "Mobile",
+    "Curated Web"
+   ],
+   "keywords": [
+    "marketplace",
+    "cleaning",
+    "home",
+    "services",
+    "gig",
+    "freelance",
+    "booking",
+    "on-demand",
+    "workers",
+    "contractors",
+    "delivery"
+   ],
+   "sources": [
+    {
+     "title": "Why Homejoy Failed",
+     "publisher": "Backchannel (Wired)",
+     "url": "https://medium.com/backchannel/why-homejoy-failed-bb0ab39d901a",
+     "published": "2015-10-26",
+     "kind": "news report"
+    },
+    {
+     "title": "Cleaning Startup Homejoy Shuts Down, Blames Worker Classification Lawsuits",
+     "publisher": "Entrepreneur",
+     "url": "https://www.entrepreneur.com/article/248579",
+     "published": "2015-07-17",
+     "kind": "news report"
+    }
+   ],
+   "verified_on": "2026-11-04"
+  },
+  {
+   "id": "quibi",
+   "name": "Quibi",
+   "years": "2018 to 2020",
+   "sector": "Short-form mobile video streaming",
+   "what": "A paid streaming service of short videos made for phones.",
+   "how_it_failed": "It raised $1.75 billion before launch yet could not attract enough subscribers. Its founders later admitted the product-market fit was wrong, in a crowded streaming market, and it shut down about six months after launching.",
+   "reasons": [
+    "Wrong product-market fit",
+    "Burned cash too fast",
+    "Crowded market"
+   ],
+   "industries": [
+    "Video Streaming",
+    "Video",
+    "Entertainment",
+    "Media",
+    "Mobile"
+   ],
+   "keywords": [
+    "video",
+    "streaming",
+    "shows",
+    "content",
+    "entertainment",
+    "media",
+    "subscription",
+    "mobile",
+    "series",
+    "films"
+   ],
+   "sources": [
+    {
+     "title": "A look at why Quibi failed so soon after launching",
+     "publisher": "NBC News",
+     "url": "https://www.nbcnews.com/business/business-news/look-why-quibi-failed-so-soon-after-launching-n1244312",
+     "published": "2020-10-22",
+     "kind": "news report"
+    }
+   ],
+   "verified_on": "2026-11-04"
+  },
+  {
+   "id": "builderai",
+   "name": "Builder.ai",
+   "years": "2016 to 2025",
+   "sector": "Software development platform",
+   "what": "A platform that promised to make building apps as easy as ordering a pizza.",
+   "how_it_failed": "After raising hundreds of millions, reports said an internal review cut its sales figures sharply (2023 revenue from about $180 million to about $45 million). Lenders declared a default and the company entered insolvency in May 2025.",
+   "reasons": [
+    "Overstated revenue (reported)",
+    "Lender default"
+   ],
+   "industries": [
+    "Software",
+    "Enterprise Software",
+    "Technology",
+    "Information Technology",
+    "Cloud Computing"
+   ],
+   "keywords": [
+    "software",
+    "platform",
+    "apps",
+    "development",
+    "enterprise",
+    "saas",
+    "no-code",
+    "automation",
+    "ai",
+    "developers",
+    "b2b"
+   ],
+   "sources": [
+    {
+     "title": "Qatar-backed Builder.ai collapses with sales in doubt",
+     "publisher": "AGBI",
+     "url": "https://www.agbi.com/tech/2025/05/qatar-backed-builder-ai-collapses-with-sales-in-doubt",
+     "published": "2025-05-23",
+     "kind": "news report"
+    },
+    {
+     "title": "Builder.ai faced US probe before company collapsed, reports say",
+     "publisher": "Sifted",
+     "url": "https://sifted.eu/articles/builder-us-probe",
+     "published": "2025-05-27",
+     "kind": "news report"
+    }
+   ],
+   "verified_on": "2026-11-04"
+  },
+  {
+   "id": "humane",
+   "name": "Humane",
+   "years": "2018 to 2025",
+   "sector": "Consumer AI hardware",
+   "what": "A wearable AI assistant pitched as an alternative to the smartphone.",
+   "how_it_failed": "Less than a year after release the company stopped selling its Ai Pin, switched off devices and sold parts of the business to HP for $116 million, reportedly far below the several hundred million it had hoped for.",
+   "reasons": [
+    "Weak launch",
+    "Product did not take off"
+   ],
+   "industries": [
+    "Hardware + Software",
+    "Technology",
+    "Mobile",
+    "Information Technology"
+   ],
+   "keywords": [
+    "hardware",
+    "device",
+    "wearable",
+    "gadget",
+    "assistant",
+    "ai",
+    "consumer",
+    "phone",
+    "pin"
+   ],
+   "sources": [
+    {
+     "title": "HP is acquiring parts of AI Pin startup Humane for $116 million—but retiring the product once hyped as a smartphone alternative",
+     "publisher": "Fortune",
+     "url": "https://www.fortune.com/2025/02/19/hp-humane-deal-ai-pin-shutting-down",
+     "published": "2025-02-19",
+     "kind": "news report"
+    },
+    {
+     "title": "Humane's AI Pin is Dead and All Devices Will Stop Working in 10 Days",
+     "publisher": "PetaPixel",
+     "url": "https://petapixel.com/2025/02/19/humanes-ai-pin-is-dead-and-all-devices-will-stop-working-in-10-days",
+     "published": "2025-02-19",
+     "kind": "news report"
+    },
+    {
+     "title": "HP acquires Humane, shuts down AI Pin designed to replace smartphones",
+     "publisher": "Business Today",
+     "url": "https://businesstoday.in/technology/news/story/hp-acquires-humane-shuts-down-ai-pin-designed-to-replace-smartphones-465106-2025-02-19",
+     "published": "2025-02-19",
+     "kind": "news report"
+    }
+   ],
+   "verified_on": "2026-11-04"
+  },
+  {
+   "id": "pear",
+   "name": "Pear Therapeutics",
+   "years": "2013 to 2023",
+   "sector": "Prescription digital therapeutics",
+   "what": "Prescription software treatments for conditions such as substance use disorder.",
+   "how_it_failed": "It won the first regulatory clearance of its kind, but insurers did not reimburse its products widely enough, so revenue stalled. It filed for bankruptcy in April 2023 and its assets were sold off.",
+   "reasons": [
+    "Who pays (reimbursement)",
+    "Slow adoption"
+   ],
+   "industries": [
+    "Health Care",
+    "Health and Wellness",
+    "Biotechnology",
+    "Software",
+    "Mobile"
+   ],
+   "keywords": [
+    "health",
+    "medical",
+    "therapy",
+    "patients",
+    "doctors",
+    "clinical",
+    "insurance",
+    "digital",
+    "treatment",
+    "wellness",
+    "care"
+   ],
+   "sources": [
+    {
+     "title": "After blazing a trail in digital therapeutics, Pear goes bankrupt",
+     "publisher": "Axios Pro",
+     "url": "https://www.axios.com/pro/health-tech-deals/2023/04/10/after-blazing-a-trail-in-digital-therapeutics-pear-goes-bankrupt",
+     "published": "2023-04-10",
+     "kind": "news report"
+    },
+    {
+     "title": "DTx Trailblazer Pear Therapeutics Files for Bankruptcy",
+     "publisher": "HLTH",
+     "url": "https://hlth.com/insights/articles/dtx-trailblazer-pear-therapeutics-files-for-bankruptcy-2023-04-14",
+     "published": "2023-04-14",
+     "kind": "news report"
+    }
+   ],
+   "verified_on": "2026-11-04"
+  },
+  {
+   "id": "bowery",
+   "name": "Bowery Farming",
+   "years": "2015 to 2024",
+   "sector": "Indoor vertical farming",
+   "what": "Large automated indoor farms growing leafy greens for supermarkets.",
+   "how_it_failed": "The company shut down in November 2024. Commentators pointed to heavy labour and energy costs and a funding squeeze that hit indoor farming as a whole, which made the economics hard to sustain at scale.",
+   "reasons": [
+    "Unit economics",
+    "Funding squeeze"
+   ],
+   "industries": [
+    "Clean Technology",
+    "Manufacturing",
+    "Energy",
+    "Technology"
+   ],
+   "keywords": [
+    "farm",
+    "farming",
+    "food",
+    "agriculture",
+    "vegetables",
+    "energy",
+    "produce",
+    "grocery",
+    "sustainable",
+    "hydroponic"
+   ],
+   "sources": [
+    {
+     "title": "Bowery Farming is ceasing operations",
+     "publisher": "TechCrunch",
+     "url": "https://techcrunch.com/2024/11/04/bowery-farming-is-ceasing-operations/",
+     "published": "2024-11-04",
+     "kind": "news report"
+    },
+    {
+     "title": "What does Bowery's closure tell us about the future of vertical farming?",
+     "publisher": "AgTech Navigator",
+     "url": "https://www.agtechnavigator.com/Article/2024/11/05/What-does-Bowery-s-closure-tell-us-about-the-future-of-vertical-farming",
+     "published": "2024-11-05",
+     "kind": "news report"
+    }
+   ],
+   "verified_on": "2026-11-04"
+  }
+ ]
+}

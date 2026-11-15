@@ -1,32 +1,159 @@
 @import "tailwindcss";
 
-@theme {
-  --color-dark-bg: #14151C;
-  --color-dark-surface: #1B1D27;
-  --color-cream: #EDEAE2;
-  --color-charcoal: #1E1B16;
+/* Fragilee v2 design tokens: the light variant uses the supplied cream/ink pair;
+   dark values match design/out/v2-design-system.html. */
+:root,
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #EDEAE2;
+  --surface: #FBFAF6;
+  --surface-2: #E3DFD5;
+  --line: rgba(30, 27, 22, .10);
+  --line-2: rgba(30, 27, 22, .18);
+  --text: #1E1B16;
+  --muted: #5E616D;
+  --faint: #73747B;
+  --violet: #A94428;
+  --violet-soft: rgba(182, 74, 45, .13);
+  --violet-text: #87351F;
+  --sage: #486B2C;
+  --sage-ink: #FFFFFF;
+  --low: #286E54;
+  --medium: #85600A;
+  --high: #A64824;
+  --critical: #9E3B53;
+  --critical-text: #8D3048;
+  --critical-ink: #FFFFFF;
+  --cream: #EDEAE2;
+  --ink: #1E1B16;
+  --coral: #A94428;
+  --coral-soft: rgba(169, 68, 40, .13);
+  --coral-ink: #FFFFFF;
+  --node-ink: #1E1B16;
+  --acid: #527D31;
+  --acid-soft: rgba(82, 125, 49, .14);
+  --shadow: 0 24px 70px rgba(30, 27, 22, .12);
+}
 
-  --color-violet: #7C6FCF;
-  --color-sage: #8FBF6B;
-
-  --color-low: #6FBFA0;
-  --color-medium: #D9A441;
-  --color-high: #E0784F;
-  --color-critical: #B14C63;
-
-  --color-text: #DCE1E8;
-  --color-muted: #8A8D99;
-  --color-ember: #E0784F;
-  --color-critical-text: #E89AAA; /* Critical as text. The raw Critical colour is only 3.3:1 on cards. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14151C;
+  --surface: #1B1D27;
+  --surface-2: #22242F;
+  --line: rgba(220, 225, 232, .09);
+  --line-2: rgba(220, 225, 232, .18);
+  --text: #DCE1E8;
+  --muted: #8A8D99;
+  --faint: #5E616D;
+  --violet: #FF805E;
+  --violet-soft: rgba(255, 128, 94, .15);
+  --violet-text: #FF9F86;
+  --sage: #B5ED60;
+  --sage-ink: #14151C;
+  --low: #6FBFA0;
+  --medium: #D9A441;
+  --high: #E0784F;
+  --critical: #B14C63;
+  --critical-text: #E89AAA;
+  --critical-ink: #FFFFFF;
+  --cream: #EDEAE2;
+  --ink: #1E1B16;
+  --coral: #FF805E;
+  --coral-soft: rgba(255, 128, 94, .15);
+  --coral-ink: #14151C;
+  --node-ink: #14151C;
+  --acid: #B5ED60;
+  --acid-soft: rgba(181, 237, 96, .13);
+  --shadow: 0 28px 90px rgba(0, 0, 0, .36);
 }
 
 @theme inline {
+  --color-dark-bg: var(--bg);
+  --color-dark-surface: var(--surface);
+  --color-cream: var(--cream);
+  --color-charcoal: var(--ink);
+  --color-violet: var(--violet);
+  --color-violet-text: var(--violet-text);
+  --color-sage: var(--sage);
+  --color-low: var(--low);
+  --color-medium: var(--medium);
+  --color-high: var(--high);
+  --color-critical: var(--critical);
+  --color-critical-text: var(--critical-text);
+  --color-critical-ink: var(--critical-ink);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-ember: var(--high);
+  --color-ink: var(--text);
+  --color-paper: var(--text);
+  --color-coral: var(--coral);
+  --color-lime: var(--acid);
+  --color-rose: var(--critical-text);
+  --color-sun: var(--medium);
+  --color-sand: var(--surface-2);
+  --color-amber: var(--medium);
+  --color-forest: var(--surface);
+  --color-brand-coral: var(--coral);
+  --color-brand-coral-soft: var(--coral-soft);
+  --color-brand-acid: var(--acid);
+  --color-brand-acid-soft: var(--acid-soft);
+  --color-coral-soft: var(--coral-soft);
+  --color-acid-soft: var(--acid-soft);
+  --color-coral-ink: var(--coral-ink);
+  --font-hero: var(--font-archivo), 'Arial Black', sans-serif;
   --font-display: var(--font-archivo), 'Arial Black', sans-serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
-  background: var(--color-dark-bg);
-  color: var(--color-text);
-  font-family: var(--font-inter), system-ui, Arial, sans-serif;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
+button { font-family: inherit; }
+a { color: inherit; }
+.font-display, .font-hero { font-weight: 400; letter-spacing: -.02em; line-height: 1.04; }
+.editorial-title { font-size: clamp(2.35rem, 6vw, 5.6rem); line-height: .92; letter-spacing: -.055em; }
+.eyebrow { font-size: .68rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.surface-lift { box-shadow: var(--shadow); }
+.analysis-grid-bg {
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--muted) 23%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.depth-sphere { filter: drop-shadow(0 18px 24px color-mix(in srgb, var(--coral) 20%, transparent)); }
+.brand-outline { border: 1px solid color-mix(in srgb, var(--coral) 34%, var(--line)); }
+.analysis-card { transition: transform .24s cubic-bezier(.2,.7,.2,1), border-color .24s ease, box-shadow .24s ease; }
+.analysis-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--coral) 55%, var(--line)); box-shadow: var(--shadow); }
+.app-nav-bottom { display: none; }
+@media screen and (max-width: 860px) {
+  .app-nav-top { display: none; }
+  .app-nav-bottom { display: grid; }
+}
+
+/* ---- existing landing motion ---- */
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee { overflow: hidden; }
+.marquee-track { display: flex; width: max-content; animation: marquee var(--dur, 45s) linear infinite; }
+.marquee-track.reverse { animation-direction: reverse; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes float { 50% { transform: translateY(-12px) rotate(var(--r, 0deg)); } }
+.float { animation: float var(--dur, 6s) ease-in-out infinite; }
+@keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.08); } }
+.blink { transform-box: fill-box; transform-origin: center; animation: blink 5s infinite; }
+@keyframes paw { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-26deg); } }
+.paw { transform-box: fill-box; transform-origin: 80% 90%; animation: paw 1.6s ease-in-out infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin 40s linear infinite; transform-origin: center; }
+.hand { transform-origin: 100px 100px; animation: spin var(--dur, 60s) linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition-duration: 0.001ms !important; }
+}
+@media (hover: none) { .analysis-card:hover { transform: none; box-shadow: none; } }
+@media (min-width: 768px) and (min-height: 760px) { .hero-sticky { position: sticky; top: 0; } }

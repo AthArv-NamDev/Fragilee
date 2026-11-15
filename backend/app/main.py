@@ -3,16 +3,17 @@ import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from . import scoring, settings
+from . import cases, cohort, evidence, scoring, settings
 from .auth import User, ip_limit, predict_user, read_user
 from .model_store import ModelStore
-from .schemas import (AnalysisCreate, AnalysisOut, AnalysisSummary, PredictionResponse,
+from .schemas import (AnalysisCreate, AnalysisOut, AnalysisSummary, CasesResponse, EvidenceResponse, PredictionResponse,
                       Stage1Request, Stage2Request)
 from .storage import StorageDenied, StorageError, make_store
 
@@ -25,6 +26,8 @@ async def lifespan(app: FastAPI):
     settings.validate()                                    # refuse to start with an unsafe setup
     app.state.store = ModelStore(settings.MODELS_DIR)      # fails loudly if a model file was changed
     app.state.analyses = make_store()
+    app.state.cases = cases.load(settings.CASES_JSON)
+    app.state.cohort = cohort.load(settings.COHORT_CSV, app.state.store.config["stages"]["stage1"]["countries"]) if "stage1" in app.state.store.stages else None
     log.info("models loaded: %s | storage: %s | env: %s", ", ".join(app.state.store.stages), settings.STORAGE, settings.ENV)
     yield
     if hasattr(app.state.analyses, "close"):
@@ -98,6 +101,9 @@ def get_meta(request: Request):
 def _run(fn, request, body, stage):
     t0 = time.perf_counter()
     result = fn(request.app.state.store, body)
+    index = request.app.state.cohort
+    if stage == "stage1" and index is not None and settings.EXPOSE_COHORT:
+        result["cohort"] = index.describe(body.country, body.state, body.tags)   # context only, never part of the score
     log.info("predict stage=%s band=%s ms=%.0f", stage, result["band"], (time.perf_counter() - t0) * 1000)
     return result
 
@@ -136,7 +142,9 @@ def create_analysis(body: AnalysisCreate, request: Request, user: User = Depends
     result = _run(fn, request, req, body.stage)
     return store.create(user, {
         "title": body.title, "stage": body.stage, "parent_id": str(body.parent_id) if body.parent_id else None,
-        "input": req.model_dump(), "result": result, "band": result["band"], "probability": result["probability"]})
+        "input": req.model_dump(), "result": result, "band": result["band"], "probability": result["probability"],
+        # only sent when given, so saving still works on a database that has not been migrated yet
+        **({"context": body.context.model_dump(exclude_none=True)} if body.context else {})})
 
 
 @app.get("/v1/analyses", response_model=list[AnalysisSummary])
@@ -151,6 +159,49 @@ def get_analysis(analysis_id: uuid.UUID, request: Request, user: User = Depends(
     if row is None:                                       # someone else's analysis looks exactly like a missing one
         raise HTTPException(404, "Analysis not found")
     return row
+
+
+@app.delete("/v1/analyses", status_code=200)
+def delete_all_analyses(request: Request, user: User = Depends(read_user)):
+    """Settings > delete all my analyses."""
+    return {"deleted": request.app.state.analyses.delete_all(user)}
+
+
+@app.get("/v1/analyses/{analysis_id}/cases", response_model=CasesResponse)
+def analysis_cases(analysis_id: uuid.UUID, request: Request, limit: int = Query(3, ge=1, le=5), user: User = Depends(read_user)):
+    """Real startups that directly match this idea, each with its sources."""
+    row = request.app.state.analyses.get(user, analysis_id)
+    if row is None:
+        raise HTTPException(404, "Analysis not found")
+    found, matched = cases.retrieve(request.app.state.cases, row["input"].get("tags", []), row.get("context"), limit)
+    note = ("Each summary is written from the linked sources. These are examples to learn from, not predictions."
+            if matched else "No direct industry or idea match was found in the curated library. Unrelated cases are not shown.")
+    return {"matched": matched, "cases": found, "note": note}
+
+
+@app.get("/v1/analyses/{analysis_id}/evidence", response_model=EvidenceResponse)
+def analysis_evidence(analysis_id: uuid.UUID, request: Request,
+                      node: str = Query(..., min_length=1, max_length=100),
+                      focus: Literal["Market", "Industry", "Funding", "Traction", "Location"] | None = Query(None),
+                      limit: int = Query(8, ge=3, le=8),
+                      user: User = Depends(read_user)):
+    """Retrieve recent source-linked evidence for one factor and research focus."""
+    row = request.app.state.analyses.get(user, analysis_id)
+    if row is None:
+        raise HTTPException(404, "Analysis not found")
+    inputs = row["input"]
+    tags = inputs.get("tags") or ([inputs["category"]] if inputs.get("category") else [])
+    place = " ".join(value for value in (inputs.get("country"), inputs.get("state")) if value and value != "OTHER")
+    found = evidence.retrieve(
+        tags, node, row.get("context") or {}, place,
+        row.get("title"), focus, limit,
+    )
+    selected = focus or node
+    disclosure = "Queries use your selected industry, place and up to 18 extracted topic words from your idea, customer and revenue notes; your startup name and full notes are not sent. "
+    note = (disclosure + f"OpenAlex research for {selected}. Direct excerpts connect the industry and factor in one sentence; "
+            "contextual results match both elsewhere in the paper. Excerpts are source text, and journal-list status is a screening signal, not a quality guarantee."
+            if found else disclosure + "No recent source passed the industry-and-factor relevance checks, or OpenAlex is temporarily unavailable.")
+    return {"provider": "OpenAlex", "node": node, "sources": found, "note": note}
 
 
 @app.delete("/v1/analyses/{analysis_id}", status_code=204, response_class=Response)

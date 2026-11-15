@@ -79,3 +79,16 @@ def test_unreachable_database_becomes_storage_error():
         raise httpx.ConnectError("down")
     with pytest.raises(StorageError):
         store_with(handler).list(USER, 1, 0)
+
+
+def test_delete_all_runs_as_the_user_and_only_filters_on_their_own_id():
+    seen = {}
+
+    def handler(request):
+        seen["req"] = request
+        return httpx.Response(200, json=[{"id": "a"}, {"id": "b"}, {"id": "c"}])
+
+    assert store_with(handler).delete_all(USER) == 3
+    r = seen["req"]
+    assert r.method == "DELETE" and r.url.params["user_id"] == f"eq.{USER.id}"
+    assert r.headers["authorization"] == "Bearer the-users-own-token" and r.headers["apikey"] == ANON

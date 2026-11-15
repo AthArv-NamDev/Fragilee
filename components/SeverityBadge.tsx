@@ -4,7 +4,7 @@ const styles: Record<Severity, string> = {
   low: 'bg-low/15 text-low',
   medium: 'bg-medium/15 text-medium',
   high: 'bg-high/15 text-high',
-  critical: 'bg-critical/15 text-critical',
+  critical: 'bg-critical/15 text-critical-text', // raw critical is only 3.3:1 as text
 };
 
 const icons: Record<Severity, string> = { low: '●', medium: '▲', high: '◆', critical: '✦' };

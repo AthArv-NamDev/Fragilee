@@ -13,7 +13,7 @@ from app.settings import MODELS_DIR
 pytestmark = pytest.mark.skipif(not (MODELS_DIR / "model_config.json").exists(),
                                 reason="run scripts/train.py first")
 
-GROUPS = {"Funding", "Traction", "Market", "Location"}
+GROUPS = {"Funding", "Traction", "Industry", "Location"}
 STAGE2_OK = {"category": "software", "state": "CA", "funding_total_usd": 250000, "funding_rounds": 2,
              "has_VC": False, "has_angel": True, "has_roundA": True, "has_roundB": False, "has_roundC": False,
              "has_roundD": False, "avg_participants": 2.0, "relationships": 5,
@@ -31,9 +31,11 @@ def stage1_ok(meta):
 
 def check_response(d):
     assert d["band"] in BANDS and 0 <= d["probability"] <= 1
+    assert d["confidence"] is None
     assert d["tree"]["band"] == d["band"]
     assert {b["group"] for b in d["tree"]["children"]} <= GROUPS
-    assert all(b["band"] in BANDS for b in d["tree"]["children"])
+    assert all(b["band"] is None for b in d["tree"]["children"])
+    assert all("contribution" in factor for branch in d["tree"]["children"] for factor in branch["factors"])
     assert d["disclaimer"] and d["limitations"]
 
 
@@ -51,7 +53,7 @@ def test_stage1_prediction(client, meta):
     r = client.post("/v1/predict/stage1", json=stage1_ok(meta))
     assert r.status_code == 200
     check_response(r.json())
-    assert r.json()["confidence"] == "limited"
+    assert r.json()["confidence"] is None
 
 
 def test_stage2_prediction(client):
@@ -71,9 +73,9 @@ def test_non_us_country_needs_no_state(client, meta):
     assert client.post("/v1/predict/stage1", json=body).status_code == 200
 
 
-def test_out_of_range_value_adds_note_and_lowers_confidence(client):
+def test_out_of_range_value_adds_caution_note_without_confidence_claim(client):
     r = client.post("/v1/predict/stage2", json={**STAGE2_OK, "funding_total_usd": 5e10}).json()
-    assert r["confidence"] == "low" and r["notes"]
+    assert r["confidence"] is None and r["notes"]
 
 
 def test_docs_examples_are_valid(client):
@@ -171,8 +173,7 @@ def test_stage2_still_rejects_malformed_state(client, state):
 def test_benchmark_label_on_both_stages(client, meta):
     s1 = client.post("/v1/predict/stage1", json=stage1_ok(meta)).json()
     s2 = client.post("/v1/predict/stage2", json=STAGE2_OK).json()
-    assert s1["benchmark"] == "Worldwide data"
-    assert s2["benchmark"] == "US benchmark"
+    assert s1["benchmark"] == s2["benchmark"] == "Historical startup data"   # deliberately vague
 
 
 def test_whole_number_factor_values_have_no_decimal_point(client, meta):
@@ -198,7 +199,8 @@ def test_limitations_use_plain_language_not_auc(client, meta):
               client.post("/v1/predict/stage2", json=STAGE2_OK).json()):
         text = " ".join(r["limitations"] + r["notes"] + [r["disclaimer"]])
         assert "AUC" not in text and "cross-validated" not in text.lower()
-        assert "2013" in text                        # the data's age is always stated
+        assert "historical" in text.lower()          # one plain sentence about the data always stays
+        assert "2013" not in text and " US " not in text and "American" not in text   # the details stay private
 
 
 def test_saved_stage2_analysis_without_state_works(client):
@@ -206,4 +208,4 @@ def test_saved_stage2_analysis_without_state_works(client):
     body = {"title": "No state", "stage": "stage2", "input": _without_state()}
     r = client.post("/v1/analyses", json=body, headers=headers_for(USER_A))
     assert r.status_code == 201, r.text
-    assert r.json()["result"]["benchmark"] == "US benchmark"
+    assert r.json()["result"]["benchmark"] == "Historical startup data"

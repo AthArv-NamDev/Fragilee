@@ -79,14 +79,15 @@ class Factor(BaseModel):
     feature: str
     label: str
     value: str | int | float
+    contribution: float = Field(description="signed TreeSHAP contribution to the model's raw log-odds score, not a percent probability")
     effect: Literal["raises risk", "lowers risk"]
-    impact: float = Field(description="share of the total push on this prediction, 0 to 1")
+    impact: float = Field(description="share of total absolute SHAP attribution for this run; related features may share attribution")
 
 
 class Branch(BaseModel):
     group: str
     label: str
-    band: Band = Field(description="how strongly this branch pushes risk up. Low = no push or lowers risk")
+    band: Band | None = Field(default=None, description="Not assigned: the model has no validated branch severity bands")
     effect: Literal["raises", "lowers", "neutral"]
     net_shap: float
     factors: list[Factor]
@@ -99,14 +100,82 @@ class Tree(BaseModel):
     children: list[Branch]
 
 
+class CohortSlice(BaseModel):
+    key: str
+    label: str
+    detail: str
+    n: int
+    enough: bool = Field(description="false when there are too few startups to show a percentage")
+    closed_share: float | None
+    low: float | None = Field(description="lower end of a 95% range for the share")
+    high: float | None
+
+
+class Cohort(BaseModel):
+    basis: str
+    overall: dict[str, float | int]
+    slices: list[CohortSlice]
+    note: str
+
+
+class CaseSource(BaseModel):
+    title: str
+    publisher: str
+    url: str
+    published: str
+    kind: str
+
+
+class CaseOut(BaseModel):
+    id: str
+    name: str
+    years: str
+    sector: str
+    what: str
+    how_it_failed: str
+    reasons: list[str]
+    sources: list[CaseSource]
+    verified_on: str
+    matched_on: list[str]
+
+
+class CasesResponse(BaseModel):
+    matched: bool = Field(description="false when the library has no direct industry or idea-text match")
+    cases: list[CaseOut]
+    note: str
+
+
+class EvidenceSource(BaseModel):
+    title: str
+    publisher: str
+    journal: str = ""
+    authors: list[str] = Field(default_factory=list)
+    doi: str | None = None
+    url: str
+    published: str
+    year: str = ""
+    venue_status: str
+    excerpt: str
+    matched_terms: list[str]
+    relation: Literal["direct", "contextual"] = "contextual"
+    focus: str = ""
+
+
+class EvidenceResponse(BaseModel):
+    provider: str
+    node: str
+    sources: list[EvidenceSource]
+    note: str
+
+
 class PredictionResponse(BaseModel):
     stage: Literal["stage1", "stage2"]
     probability: float = Field(description="calibrated chance of closing, among startups like those in the data")
     band: Band
     similar_startups_failure_rate: float = Field(description="share of training startups in this band that closed")
-    base_failure_rate: float
-    confidence: Literal["limited", "moderate", "low"]
+    confidence: Literal["limited", "moderate", "low"] | None = Field(default=None, description="No confidence category is emitted because the current validation does not calibrate one")
     benchmark: str = Field(description="who the comparison is made against, e.g. 'US benchmark'")
+    cohort: Cohort | None = Field(default=None, description="real counts for similar startups (Stage 1 only)")
     tree: Tree
     notes: list[str]
     limitations: list[str]
@@ -116,6 +185,30 @@ class PredictionResponse(BaseModel):
 # ---- saved analyses ------------------------------------------------------------
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80,
                                          pattern=r"^[^\x00-\x1f\x7f]+$")]   # no control characters
+
+
+_NO_CONTROL = r"^[^\x00-\x08\x0b-\x1f\x7f]*$"   # no control characters (newlines are fine)
+LongText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=800, pattern=_NO_CONTROL)]
+ShortText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200, pattern=_NO_CONTROL)]
+
+
+class Context(BaseModel):
+    """What the founder tells us about the startup. Saved with the analysis for context only: the risk models
+    never see it, so it cannot change the band."""
+    model_config = ConfigDict(extra="forbid")
+
+    concept: LongText | None = Field(default=None, description="what the startup does")
+    vision: LongText | None = Field(default=None, description="where it is going")
+    customer: ShortText | None = None
+    revenue_model: ShortText | None = Field(default=None, description="how it makes money")
+    startup_stage: Literal["idea", "prototype", "launched", "earning"] | None = None
+    team_size: int | None = Field(default=None, ge=1, le=500)
+    biggest_worry: ShortText | None = None
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def blank_means_missing(cls, v):
+        return None if isinstance(v, str) and not v else v
 
 
 class AnalysisCreate(BaseModel):
@@ -128,6 +221,7 @@ class AnalysisCreate(BaseModel):
     stage: Literal["stage1", "stage2"]
     parent_id: uuid.UUID | None = Field(default=None, description="set when this is a new version of an earlier analysis")
     input: dict[str, Any]
+    context: Context | None = None
 
 
 class AnalysisSummary(BaseModel):
@@ -143,3 +237,4 @@ class AnalysisSummary(BaseModel):
 class AnalysisOut(AnalysisSummary):
     input: dict[str, Any]
     result: dict[str, Any]   # a snapshot of what the user saw, so old analyses never change
+    context: dict[str, Any] | None = None   # what the founder wrote. Missing on analyses saved before this existed.

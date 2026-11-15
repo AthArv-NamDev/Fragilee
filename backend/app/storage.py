@@ -32,6 +32,7 @@ class AnalysisStore(Protocol):
     def get(self, user: User, analysis_id: uuid.UUID) -> dict | None: ...
     def delete(self, user: User, analysis_id: uuid.UUID) -> bool: ...
     def count(self, user: User) -> int: ...
+    def delete_all(self, user: User) -> int: ...
 
 
 class MemoryStore:
@@ -69,6 +70,12 @@ class MemoryStore:
 
     def count(self, user):
         return len(self._mine(user))
+
+    def delete_all(self, user):
+        mine = [r["id"] for r in self._mine(user)]
+        for i in mine:
+            del self._rows[i]
+        return len(mine)
 
 
 class SupabaseStore:
@@ -114,6 +121,10 @@ class SupabaseStore:
     def delete(self, user, analysis_id):
         rows = self._send("DELETE", user, params={"id": f"eq.{analysis_id}"}, Prefer="return=representation").json()
         return bool(rows)
+
+    def delete_all(self, user):
+        rows = self._send("DELETE", user, params={"user_id": f"eq.{user.id}"}, Prefer="return=representation").json()
+        return len(rows)
 
     def count(self, user):
         r = self._send("HEAD", user, params={"select": "id"}, Prefer="count=exact")

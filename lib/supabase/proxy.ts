@@ -1,9 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "./env";
+import { LANDING_AFTER_LOGIN, safeNext } from "../redirect";
 
 // Pages that need a login. Add new private screens here.
-const PROTECTED = ["/dashboard", "/new", "/analysis", "/settings"];
+const PROTECTED = ["/dashboard", "/new", "/history", "/guide", "/analysis", "/settings"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -32,7 +33,7 @@ export async function updateSession(request: NextRequest) {
     return redirect;
   };
 
-  if (!signedIn && PROTECTED.some((p) => path === p || path.startsWith(p + "/"))) return goTo("/login");
-  if (signedIn && path === "/login") return goTo("/dashboard");
+  if (!signedIn && PROTECTED.some((p) => path === p || path.startsWith(p + "/"))) return goTo(`/login?next=${encodeURIComponent(path + request.nextUrl.search)}`);   // sign in (or sign up), then carry on
+  if (signedIn && path === "/login") return goTo(safeNext(request.nextUrl.searchParams.get("next")) ?? LANDING_AFTER_LOGIN);
   return response;
 }

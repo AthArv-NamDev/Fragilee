@@ -9,8 +9,11 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 ENV = os.getenv("ENV", "dev")                      # set ENV=prod when deployed
 MODELS_DIR = Path(os.getenv("MODELS_DIR", ROOT / "models"))
+EXPOSE_COHORT = os.getenv("EXPOSE_COHORT", "false").lower() == "true"   # counts from the training data stay private unless you turn this on
+CASES_JSON = Path(os.getenv("CASES_JSON", ROOT / "data" / "cases.json"))
+COHORT_CSV = Path(os.getenv("COHORT_CSV", ROOT / "data" / "processed" / "stage1_clean.csv"))   # for "startups like yours" counts
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
-MAX_BODY_BYTES = int(os.getenv("MAX_BODY_BYTES", "10000"))   # requests here are tiny, so refuse big ones
+MAX_BODY_BYTES = int(os.getenv("MAX_BODY_BYTES", "16000"))   # requests here are tiny, so refuse big ones
 
 # --- Supabase (login + database) ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
@@ -29,7 +32,7 @@ def validate() -> None:
     """Refuse to start with an unsafe or incomplete setup."""
     host = urlparse(SUPABASE_URL).hostname or ""
     if not SUPABASE_URL:
-        raise RuntimeError("SUPABASE_URL is not set. See .env.example.")
+        raise RuntimeError("SUPABASE_URL is not set. See backend.env.example.")
     if not SUPABASE_URL.startswith("https://") and host not in ("localhost", "127.0.0.1"):
         raise RuntimeError("SUPABASE_URL must start with https://")
     if STORAGE not in ("supabase", "memory"):

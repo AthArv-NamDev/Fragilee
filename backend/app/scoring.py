@@ -1,7 +1,7 @@
 """Turns a validated request into: probability, risk band and a risk tree built from SHAP."""
 import pandas as pd
 
-from .features import BANDS, apply_platt, assign_band, branch_band, build_stage1, build_stage2, risk_group
+from .features import BANDS, apply_platt, assign_band, build_stage1, build_stage2, risk_group
 from .model_store import ModelStore
 from .schemas import Stage1Request, Stage2Request
 
@@ -30,8 +30,8 @@ FACTOR_LABELS = {
     "age_last_funding_year": "Years from founding to latest funding",
     "n_tags": "Number of industry tags",
 }
-GROUP_LABELS = {"Funding": "Funding", "Traction": "Traction", "Market": "Market", "Location": "Location"}
-BENCHMARKS = {"stage1": "Worldwide data", "stage2": "US benchmark"}   # Stage 2 was trained on US startups only
+GROUP_LABELS = {"Funding": "Funding", "Traction": "Traction", "Industry": "Industry", "Location": "Location"}
+BENCHMARKS = {"stage1": "Historical startup data", "stage2": "Historical startup data"}   # deliberately vague: the details of our data stay private
 DISCLAIMER = ("This shows patterns in historical startup data. It is not a prediction of your startup's future "
               "and not financial or legal advice.")
 
@@ -75,31 +75,29 @@ def _explain(sm, X, sv):
     branches = []
     for name, g in groups.items():
         net = g["net"]
-        band = branch_band(net)
         top = sorted(g["factors"], reverse=True)[:3]
         branches.append({
-            "group": name, "label": GROUP_LABELS[name], "band": band,
-            "effect": "neutral" if abs(net) < 0.05 else ("raises" if net > 0 else "lowers"),
+            "group": name, "label": GROUP_LABELS[name], "band": None,
+            "effect": "neutral" if net == 0 else ("raises" if net > 0 else "lowers"),
             "net_shap": round(net, 3),
-            "factors": [{"feature": f, "label": label_for(f), "value": display_value(f, v),
+            "factors": [{"feature": f, "label": label_for(f), "value": display_value(f, v), "contribution": round(s, 3),
                          "effect": "raises risk" if s > 0 else "lowers risk",
                          "impact": round(a / total, 3)} for a, f, v, s in top],
         })
     return sorted(branches, key=lambda b: b["net_shap"], reverse=True)
 
 
-def _predict(store, stage, X, notes, confidence, limitations):
+def _predict(store, stage, X, notes, limitations):
     sm = _stage(store, stage)
     p_raw, sv = sm.score(X)
     cal = sm.entry["calibration"]
     p = float(apply_platt(p_raw, cal["a"], cal["b"]))
     band = assign_band(p, sm.entry["band_cutoffs"])
     return {
-        "stage": stage, "probability": round(p, 3), "band": band,
-        "similar_startups_failure_rate": sm.entry["band_observed_failure_rate"][band],
-        "base_failure_rate": sm.entry["failed_share"], "confidence": confidence,
+        "stage": stage, "probability": round(p, 2), "band": band,
+        "similar_startups_failure_rate": sm.entry["band_observed_failure_rate"][band], "confidence": None,
         "benchmark": BENCHMARKS[stage],
-        "tree": {"label": f"Failure risk: {band}", "band": band, "probability": round(p, 3),
+        "tree": {"label": f"Failure risk: {band}", "band": band, "probability": round(p, 2),
                  "children": _explain(sm, X, sv)},
         "notes": notes, "limitations": limitations, "disclaimer": DISCLAIMER,
     }
@@ -116,10 +114,9 @@ def predict_stage1(store: ModelStore, req: Stage1Request) -> dict:
     notes = []
     if req.country not in e["countries"]:
         notes.append("Your country is grouped with 'other countries' because the data has few startups from it.")
-    limits = ["Uses only industry and location, so it tells startups apart only modestly better than chance. "
-              "It shows which kinds of startups closed more often, not what will happen to yours.",
-              "Built from 2013-era data on startups that raised funding and had a final outcome (closed or exited)."]
-    return _predict(store, "stage1", X, notes, "limited", limits)
+    limits = ["Uses only industry and place, so it tells startups apart only modestly. It shows which kinds of startups closed more often, not what will happen to yours.",
+              "Based on historical startup data, so it can miss recent shifts in the market and may fit some regions better than others."]
+    return _predict(store, "stage1", X, notes, limits)
 
 
 def predict_stage2(store: ModelStore, req: Stage2Request) -> dict:
@@ -139,22 +136,21 @@ def predict_stage2(store: ModelStore, req: Stage2Request) -> dict:
                          f"({r['min']:,.4g} to {r['max']:,.4g}). Treat the result with extra caution.")
     if req.state not in (state, "OTHER"):
         notes.append("Your state is grouped with 'other states' because the data has few startups from it.")
-    limits = [f"Built from {e['rows']} US startups, a small sample. It separates closed from acquired startups "
-              "clearly better than chance, but it still gets many individual startups wrong.",
+    limits = ["A rough guide built from a modest sample. It separates closed from acquired startups clearly better than chance, but it still gets many individual startups wrong.",
               "Business relationships is the strongest signal, and part of it may reflect success after the fact.",
-              "The data only has startups with a final outcome (closed or acquired), from a 2013-era snapshot."]
-    return _predict(store, "stage2", X, notes, "low" if notes else "moderate", limits)
+              "Based on historical startup data, so it can miss recent shifts in the market and may fit some regions better than others."]
+    return _predict(store, "stage2", X, notes, limits)
 
 
 def meta(store: ModelStore) -> dict:
+    """What the forms need and nothing else: no accuracy figures, sizes or rates. Those stay private."""
     out = {"bands": BANDS, "stages": {}}
     for name, e in store.config["stages"].items():
-        item = {"available": name in store.stages, "cv_auc": e.get("cv_auc"), "test_auc": e.get("test_auc")}
+        item = {"available": name in store.stages}
         if name == "stage1":
-            item["inputs"] = {"countries": e["countries"], "states": [s for s in e["states"] if s != "NONE"],
-                              "tags": e["tags"], "notes": "Any other country is accepted and grouped as 'other'."}
+            item["inputs"] = {"countries": e["countries"], "states": [s for s in e["states"] if s != "NONE"], "tags": e["tags"],
+                              "notes": "Any other country is accepted and grouped as 'other'."}
         else:
             item["inputs"] = {"categories": e["categories"], "states": e["states"]}
-        item["observed_failure_rate_by_band"] = e.get("band_observed_failure_rate")
         out["stages"][name] = item
     return out

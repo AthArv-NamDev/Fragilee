@@ -17,6 +17,7 @@
 /.next/
 /.next-local-supabase/
 /out/
+/AGENTS.md
 
 # production
 /build

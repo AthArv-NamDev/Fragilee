@@ -18,7 +18,7 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
           <p className="mt-3 max-w-xl text-sm text-muted">
             {res.status === 0 ? "The API could not be reached. Check that the backend is running, then try your history again." : `The API answered ${res.status}. Your saved history has not been changed.`}
           </p>
-          <Link href="/history" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-sage px-5 text-sm font-semibold text-[var(--sage-ink)]">Back to saved analyses</Link>
+          <Link href="/history" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-sage px-5 text-sm font-semibold button-label-on-sage">Back to saved analyses</Link>
         </section>
       </main>
     );

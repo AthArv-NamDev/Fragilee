@@ -143,7 +143,7 @@ export default function LoginForm({ next, initialMode, initialTheme, authError }
               </div>
 
               <button type="submit" disabled={busy}
-                className="min-h-12 w-full rounded-full bg-sage px-6 font-semibold text-[var(--sage-ink)] transition-transform hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet disabled:opacity-60">
+                className="min-h-12 w-full rounded-full bg-sage px-6 font-semibold button-label-on-sage transition-transform hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet disabled:opacity-60">
                 {busy ? "One moment…" : mode === "signin" ? "Sign in" : "Sign up"}
               </button>
             </form>

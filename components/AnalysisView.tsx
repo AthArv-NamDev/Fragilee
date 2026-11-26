@@ -2,127 +2,223 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import { useState } from "react";
-import type { Analysis, CasesResponse, Context } from "@/lib/types";
-import { buildModel, summarise } from "@/lib/tree";
+import type { Analysis, CasesResponse, Context, ProfileMetric, StartupProfile } from "@/lib/types";
+import { COUNTRY_NAMES, STATE_NAMES } from "@/lib/geo";
+import { formatProfileMetric, formatProfileUpdatedAt, shouldDisplayLegacyTeamSize, shouldDisplayStructuredRevenueModel } from "@/lib/profile-presentation.mjs";
 import PlexTree from "./tree/PlexTree";
 import CasesPanel from "./CasesPanel";
-import ResultTabs from "./ResultTabs";
 
 const STAGE_LABEL: Record<NonNullable<Context["startup_stage"]>, string> = { idea: "Idea", prototype: "Prototype", launched: "Launched", earning: "Earning money" };
+const CONTEXT_FIELDS: [keyof Context, string][] = [
+  ["concept", "What it does"], ["vision", "Vision"], ["customer", "Target customer"],
+  ["revenue_model", "Revenue model (founder note)"], ["startup_stage", "Current stage"], ["team_size", "Team size"],
+  ["biggest_worry", "Biggest worry"],
+];
 
-function Notes({ context }: { context: Context }) {
-  const rows: [string, string][] = [
-    ["What it does", context.concept ?? ""], ["Vision", context.vision ?? ""], ["Customer", context.customer ?? ""], ["How it makes money", context.revenue_model ?? ""],
-    ["Where it is today", context.startup_stage ? STAGE_LABEL[context.startup_stage] : ""], ["Team size", context.team_size ? String(context.team_size) : ""], ["Biggest worry", context.biggest_worry ?? ""],
-  ].filter(([, value]) => value) as [string, string][];
-  return <div className="max-w-3xl rounded-3xl border border-ink/10 bg-dark-surface p-6 md:p-8">
-    <p className="eyebrow text-coral">Founder supplied context</p>
-    <h2 className="mt-2 font-display text-3xl">Your notes, kept in their lane.</h2>
-    <p className="mt-2 max-w-2xl text-sm text-muted">These notes are saved with this analysis. They do not change the historical model output and have not been independently verified.</p>
-    {rows.length ? <dl className="mt-6 grid gap-0 divide-y divide-ink/10 border-y border-ink/10 text-sm sm:grid-cols-[160px_1fr]">
-      {rows.map(([label, value]) => <div key={label} className="contents"><dt className="py-3 text-muted">{label}</dt><dd className="py-3 whitespace-pre-line break-words">{value}</dd></div>)}
-    </dl> : <p className="mt-6 text-sm text-muted">No additional founder notes were saved for this analysis.</p>}
+function founderValue(field: keyof Context, value: Context[keyof Context] | undefined) {
+  if (value === undefined || value === null || value === "") return "Not provided";
+  if (field === "startup_stage") return STAGE_LABEL[value as NonNullable<Context["startup_stage"]>] ?? String(value);
+  return String(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isOptionalStringFields(value: unknown, fields: string[]): boolean {
+  if (value == null) return true;
+  return isRecord(value) && fields.every((field) => value[field] == null || typeof value[field] === "string");
+}
+
+function isProfileMetric(value: unknown): value is ProfileMetric {
+  if (!isRecord(value)) return false;
+  const optionalStrings = ["unit", "currency", "measurement_date", "period", "period_start", "period_end", "source_reference"];
+  const optionalNumbers = ["value", "range_low", "range_high"];
+  return typeof value.field_id === "string"
+    && ["measured", "estimated", "assumed", "unknown", "not_applicable"].includes(String(value.provenance))
+    && ["applicable", "unknown", "not_applicable"].includes(String(value.applicability))
+    && typeof value.confirmed_by_user === "boolean"
+    && optionalStrings.every((field) => value[field] == null || typeof value[field] === "string")
+    && optionalNumbers.every((field) => value[field] == null || (typeof value[field] === "number" && Number.isFinite(value[field])))
+    && ["field_id", "provenance", "applicability", "confirmed_by_user"].every((field) => field in value);
+}
+
+function isMetricGroup(value: unknown, fields: string[]): boolean {
+  if (value == null) return true;
+  if (!isRecord(value) || !isOptionalStringFields(value, fields)) return false;
+  return value.metrics == null || (Array.isArray(value.metrics) && value.metrics.every(isProfileMetric));
+}
+
+function isDisplayableProfile(value: unknown): value is StartupProfile {
+  if (!isRecord(value) || value.profile_schema_version !== 1 || typeof value.last_updated_at !== "string") return false;
+  const identityFields = ["business_model", "stage", "problem", "proposed_solution", "operating_geography", "target_market_geography"];
+  if (!isOptionalStringFields(value.identity, identityFields)) return false;
+  if (!isMetricGroup(value.customer_market, ["customer_type", "customer_segment", "customer_description", "discovery_evidence", "willingness_to_pay_evidence", "existing_alternatives", "market_size_assumption"])) return false;
+  if (!isMetricGroup(value.product_traction, ["product_status", "customer_validation", "acquisition_channel"])) return false;
+  if (!isMetricGroup(value.economics, ["revenue_model", "pricing_model", "acquisition_channel"])) return false;
+  if (!isMetricGroup(value.finance, ["funding_status", "funding_sources", "upcoming_milestones"])) return false;
+  if (!isMetricGroup(value.team_operations, ["team_capabilities", "capability_gaps", "critical_dependencies", "suppliers_or_distribution", "technology_constraints", "regulatory_context"])) return false;
+  const details = value.business_model_details;
+  if (details == null) return true;
+  if (!isRecord(details) || typeof details.kind !== "string") return false;
+  return isMetricGroup(details, ["buyer_group", "seller_group", "liquidity_notes", "fulfilment_notes", "manufacturing_readiness", "tooling_and_production", "supply_chain_dependencies", "sales_cycle_notes", "renewal_notes", "product_category", "regulatory_jurisdiction", "licensing_status", "infrastructure_dependencies", "development_or_validation_stage", "regulatory_pathway", "capital_and_development_milestones", "service_type", "delivery_capacity_notes"]);
+}
+
+function ProfileSection({ profile, legacyRevenueModel }: { profile: NonNullable<Context["profile"]>; legacyRevenueModel?: string }) {
+  const rows: [string, string][] = [];
+  const identity = profile.identity;
+  if (identity?.business_model) rows.push(["Business model", identity.business_model.replaceAll("_", " ")]);
+  if (identity?.stage) rows.push(["Structured stage", identity.stage.replaceAll("_", " ")]);
+  if (identity?.problem) rows.push(["Problem", identity.problem]);
+  if (identity?.proposed_solution) rows.push(["Proposed solution", identity.proposed_solution]);
+  if (identity?.operating_geography) rows.push(["Operating geography", identity.operating_geography]);
+  if (identity?.target_market_geography) rows.push(["Target geography", identity.target_market_geography]);
+  if (profile.customer_market?.customer_type) rows.push(["Customer type", profile.customer_market.customer_type.toUpperCase()]);
+  if (profile.customer_market?.customer_segment) rows.push(["Customer segment", profile.customer_market.customer_segment]);
+  if (profile.customer_market?.customer_description) rows.push(["Customer description", profile.customer_market.customer_description]);
+  if (profile.product_traction?.product_status) rows.push(["Product status", profile.product_traction.product_status.replaceAll("_", " ")]);
+  if (profile.customer_market?.discovery_evidence) rows.push(["Customer discovery evidence", profile.customer_market.discovery_evidence]);
+  if (profile.customer_market?.willingness_to_pay_evidence) rows.push(["Willingness-to-pay evidence", profile.customer_market.willingness_to_pay_evidence]);
+  if (profile.customer_market?.existing_alternatives) rows.push(["Existing alternatives", profile.customer_market.existing_alternatives]);
+  if (profile.customer_market?.market_size_assumption) rows.push(["Market-size assumption", profile.customer_market.market_size_assumption]);
+  if (profile.product_traction?.customer_validation) rows.push(["Customer validation", profile.product_traction.customer_validation]);
+  if (profile.product_traction?.acquisition_channel) rows.push(["Acquisition channel", profile.product_traction.acquisition_channel]);
+  if (shouldDisplayStructuredRevenueModel(legacyRevenueModel, profile.economics?.revenue_model)) rows.push(["Structured revenue model", profile.economics!.revenue_model!]);
+  if (profile.economics?.pricing_model) rows.push(["Pricing model", profile.economics.pricing_model]);
+  if (profile.finance?.funding_status) rows.push(["Funding status", profile.finance.funding_status.replaceAll("_", " ")]);
+  if (profile.finance?.funding_sources) rows.push(["Funding sources", profile.finance.funding_sources]);
+  if (profile.finance?.upcoming_milestones) rows.push(["Upcoming milestones", profile.finance.upcoming_milestones]);
+  if (profile.team_operations?.team_capabilities) rows.push(["Team capabilities", profile.team_operations.team_capabilities]);
+  if (profile.team_operations?.capability_gaps) rows.push(["Capability gaps", profile.team_operations.capability_gaps]);
+  if (profile.team_operations?.critical_dependencies) rows.push(["Critical dependencies", profile.team_operations.critical_dependencies]);
+  if (profile.team_operations?.suppliers_or_distribution) rows.push(["Suppliers or distribution", profile.team_operations.suppliers_or_distribution]);
+  if (profile.team_operations?.technology_constraints) rows.push(["Technology constraints", profile.team_operations.technology_constraints]);
+  if (profile.team_operations?.regulatory_context) rows.push(["Regulatory context", profile.team_operations.regulatory_context]);
+  const detail = profile.business_model_details;
+  if (detail && "sales_cycle_notes" in detail && detail.sales_cycle_notes) rows.push(["Sales cycle context", detail.sales_cycle_notes]);
+  if (detail && "liquidity_notes" in detail && detail.liquidity_notes) rows.push(["Marketplace liquidity context", detail.liquidity_notes]);
+  if (detail && "fulfilment_notes" in detail && detail.fulfilment_notes) rows.push(["Fulfilment context", detail.fulfilment_notes]);
+  if (detail && "tooling_and_production" in detail && detail.tooling_and_production) rows.push(["Tooling and production", detail.tooling_and_production]);
+  if (detail && "infrastructure_dependencies" in detail && detail.infrastructure_dependencies) rows.push(["Financial infrastructure dependencies", detail.infrastructure_dependencies]);
+  if (detail && "regulatory_pathway" in detail && detail.regulatory_pathway) rows.push(["Regulatory pathway", detail.regulatory_pathway]);
+  if (detail && "delivery_capacity_notes" in detail && detail.delivery_capacity_notes) rows.push(["Delivery capacity", detail.delivery_capacity_notes]);
+  const metricGroups = [profile.customer_market?.metrics, profile.product_traction?.metrics, profile.economics?.metrics, profile.finance?.metrics, profile.team_operations?.metrics, profile.business_model_details && "metrics" in profile.business_model_details ? profile.business_model_details.metrics : undefined];
+  const metricLabels: Record<string, string> = { team_size: "Team size", revenue_amount: "Monthly revenue", paying_customers: "Paying customers", active_users: "Active users", retention_rate: "Retention rate", churn_rate: "Churn rate", cash_balance: "Cash balance", monthly_operating_expense: "Monthly operating expense", runway: "Runway" };
+  metricGroups.flatMap((group) => group ?? []).forEach((metric) => {
+    const value = formatProfileMetric(metric);
+    rows.push([metricLabels[metric.field_id] ?? metric.field_id.replaceAll("_", " "), `${value}${metric.source_reference ? ` · Source: ${metric.source_reference}` : ""}`]);
+  });
+  if (!rows.length) return null;
+  return <div className="mt-5 rounded-2xl border border-ink/10 p-4">
+    <h3 className="font-semibold">Structured profile <span className="text-xs font-normal text-muted">Schema v{profile.profile_schema_version}</span></h3>
+    <p className="mt-1 text-xs text-muted">Founder-supplied snapshot, updated {formatProfileUpdatedAt(profile.last_updated_at)}. Provenance describes how each value was supplied; it does not independently verify it.</p>
+    <dl className="mt-3 grid gap-x-6 divide-y divide-ink/10 text-sm md:grid-cols-[minmax(150px,.35fr)_1fr]">{rows.map(([label, value], i) => <div key={`${label}-${i}`} className="contents"><dt className="py-2 text-muted">{label}</dt><dd className="whitespace-pre-line break-words py-2">{value}</dd></div>)}</dl>
   </div>;
 }
 
-function SignalArt({ branches }: { branches: Analysis["result"]["tree"]["children"] }) {
-  const max = Math.max(...branches.map((branch) => Math.abs(branch.net_shap)), 0.0001);
-  const slot = (index: number) => {
-    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / Math.max(branches.length, 1);
-    return { x: 50 + 36 * Math.cos(angle), y: 48 + 36 * Math.sin(angle) };
-  };
-  return <div className="relative mx-auto aspect-square w-full max-w-[300px]" aria-label="Model contribution map">
-    <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" role="img" aria-label="Connections between startup fields represented in this historical model">
-      <defs><radialGradient id="coreGlow"><stop stopColor="var(--coral)" stopOpacity=".6"/><stop offset="1" stopColor="var(--coral)" stopOpacity="0"/></radialGradient></defs>
-      {branches.map((branch, index) => { const p = slot(index); return <path key={branch.group} d={`M50 48 Q ${(50 + p.x) / 2} ${(48 + p.y) / 2 - 8} ${p.x} ${p.y}`} fill="none" stroke={branch.effect === "raises" ? "var(--coral)" : branch.effect === "lowers" ? "var(--acid)" : "var(--muted)"} strokeOpacity=".7" strokeWidth=".55" strokeDasharray="1.2 1.8" />; })}
-      <circle cx="50" cy="48" r="20" fill="url(#coreGlow)" />
-      <circle cx="50" cy="48" r="8" fill="var(--surface)" stroke="var(--coral)" strokeWidth=".8" />
-      <text x="50" y="47" textAnchor="middle" fill="var(--text)" fontSize="2.2" fontWeight="700">THIS RUN</text>
-      <text x="50" y="51" textAnchor="middle" fill="var(--muted)" fontSize="1.8">MODEL TRACE</text>
-      {branches.map((branch, index) => { const p = slot(index); const radius = 2.5 + 3.4 * Math.abs(branch.net_shap) / max; const color = branch.effect === "raises" ? "var(--coral)" : branch.effect === "lowers" ? "var(--acid)" : "var(--muted)"; return <g key={branch.group}>
-        <title>{branch.label}: signed model contribution {branch.net_shap.toFixed(3)} log-odds</title>
-        <circle cx={p.x} cy={p.y} r={radius + 2} fill={color} opacity=".1" />
-        <circle cx={p.x} cy={p.y} r={radius} fill="var(--surface)" stroke={color} strokeWidth=".8" />
-        <circle cx={p.x - radius * .28} cy={p.y - radius * .28} r={radius * .2} fill="var(--text)" opacity=".75" />
-        <text x={p.x} y={p.y + radius + 4.5} textAnchor="middle" fill="var(--text)" fontSize="2.6" fontWeight="600">{branch.label.length > 15 ? `${branch.label.slice(0, 13)}…` : branch.label}</text>
-      </g>; })}
-    </svg>
-    <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap text-[10px] text-muted">
-      <span className="flex items-center gap-1.5"><i className="size-1.5 rounded-full bg-coral"/>Raises model score</span>
-      <span className="flex items-center gap-1.5"><i className="size-1.5 rounded-full bg-lime"/>Lowers model score</span>
-    </div>
-  </div>;
+function Overview({ analysis }: { analysis: Analysis }) {
+  const input = analysis.input ?? {};
+  const tags = Array.isArray(input.tags) ? input.tags.filter((tag): tag is string => typeof tag === "string" && !!tag.trim()) : [];
+  const countryCode = typeof input.country === "string" ? input.country : "";
+  const stateCode = typeof input.state === "string" ? input.state : "";
+  const country = countryCode ? COUNTRY_NAMES[countryCode] ?? countryCode : "Not provided";
+  const place = [country, stateCode && stateCode !== "NONE" ? STATE_NAMES[stateCode] ?? stateCode : ""].filter(Boolean).join(" · ") || "Not provided";
+  const context = analysis.context ?? {};
+  const date = new Date(analysis.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+  return <section className="rounded-[28px] border border-ink/10 bg-dark-surface p-6 surface-lift md:p-10" aria-labelledby="startup-overview-title">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="eyebrow text-coral">Fragilee / startup overview</p>
+        <p className="text-xs text-muted"><span className="sr-only">Analysis date: </span>{date}</p>
+      </div>
+      <h1 id="startup-overview-title" className="editorial-title mt-4 max-w-4xl break-words font-display">{analysis.title}<span className="text-coral">.</span></h1>
+      <p className="mt-5 text-sm text-muted">Submitted location: <span className="text-text">{place}</span></p>
+      <div className="mt-3 flex flex-wrap gap-2" aria-label="Submitted industries">
+        {tags.length ? tags.map((tag) => <span key={tag} className="rounded-full border border-ink/15 px-3 py-1.5 text-xs text-text">{tag}</span>) : <span className="text-sm text-muted">Industry: Not provided</span>}
+      </div>
+      {context.concept && <p className="mt-6 max-w-3xl whitespace-pre-line break-words text-base leading-relaxed">{context.concept}</p>}
+      <Link href="#evidence-examples" className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold button-label-on-sage transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral">Review research and historical examples <span aria-hidden="true">↓</span></Link>
+    </section>;
+}
+
+function FounderInformation({ analysis }: { analysis: Analysis }) {
+  const context = analysis.context ?? {};
+  const countryCode = typeof analysis.input?.country === "string" ? analysis.input.country : "";
+  const stateCode = typeof analysis.input?.state === "string" ? analysis.input.state : "";
+  const country = countryCode ? COUNTRY_NAMES[countryCode] ?? countryCode : "Not provided";
+  const place = [country, stateCode && stateCode !== "NONE" ? STATE_NAMES[stateCode] ?? stateCode : ""].filter(Boolean).join(" · ") || "Not provided";
+  const tags = Array.isArray(analysis.input?.tags) ? analysis.input.tags.filter((tag): tag is string => typeof tag === "string" && !!tag.trim()) : [];
+  const displayProfile = isDisplayableProfile(context.profile) ? context.profile : null;
+  const profileMetrics = displayProfile ? [displayProfile.customer_market?.metrics, displayProfile.product_traction?.metrics, displayProfile.economics?.metrics, displayProfile.finance?.metrics, displayProfile.team_operations?.metrics, displayProfile.business_model_details && "metrics" in displayProfile.business_model_details ? displayProfile.business_model_details.metrics : undefined].flatMap((group) => group ?? []) : [];
+  const structuredTeamSize = profileMetrics.find((metric) => metric.field_id === "team_size");
+  const hasContext = CONTEXT_FIELDS.some(([field]) => context[field] !== undefined && context[field] !== null && context[field] !== "");
+
+  return <section className="mt-6 rounded-[24px] border border-ink/10 bg-dark-surface p-5 md:p-7" aria-labelledby="provided-info-title">
+      <p className="eyebrow text-coral">Founder-submitted information</p>
+      <h2 id="provided-info-title" className="mt-2 font-display text-2xl">What you shared</h2>
+      <p className="mt-2 max-w-3xl text-sm text-muted">These are the values saved with this analysis. Free-text answers are founder-provided and have not been independently verified. “Not provided” means information is unavailable here; it is not a risk signal.</p>
+      <dl className="mt-5 grid gap-x-8 divide-y divide-ink/10 border-y border-ink/10 text-sm md:grid-cols-[minmax(150px,.35fr)_1fr]">
+        <div className="contents"><dt className="py-3 text-muted">Location used for model input</dt><dd className="break-words py-3">{place}</dd></div>
+        <div className="contents"><dt className="py-3 text-muted">Industry tags used for model input</dt><dd className="break-words py-3">{tags.length ? tags.join(", ") : "Not provided"}</dd></div>
+        {CONTEXT_FIELDS.filter(([field]) => field !== "team_size" || shouldDisplayLegacyTeamSize(context.team_size, structuredTeamSize)).map(([field, label]) => <div key={field} className="contents"><dt className="py-3 text-muted">{field === "team_size" && structuredTeamSize ? "Team size (legacy founder note)" : label}</dt><dd className="whitespace-pre-line break-words py-3">{founderValue(field, context[field])}</dd></div>)}
+      </dl>
+      {!hasContext && !displayProfile && <p className="mt-3 text-xs text-muted">This saved analysis has no additional founder notes or structured profile.</p>}
+      {displayProfile && <ProfileSection profile={displayProfile} legacyRevenueModel={context.revenue_model}/>}
+      {context.profile != null && !displayProfile && <p className="mt-3 rounded-xl border border-ink/10 p-3 text-sm text-muted" role="status">The saved structured profile could not be displayed safely. Other founder notes and report sections remain available.</p>}
+    </section>;
 }
 
 export default function AnalysisView({ analysis, cases }: { analysis: Analysis; cases: CasesResponse | null }) {
-  const r = analysis.result;
   const reduce = useReducedMotion();
-  const [tab, setTab] = useState("tree");
-  const model = buildModel(r, analysis.title);
-  const sum = summarise(model);
-  const date = new Date(analysis.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  const stageLabel = analysis.stage === "stage1" ? "Level 1 · place + industry" : "Level 2 · company data";
-  const researchNode = sum.up ?? [...r.tree.children].sort((a, b) => Math.abs(b.net_shap) - Math.abs(a.net_shap))[0]?.label ?? "Industry";
-  const hasNotes = analysis.context && Object.values(analysis.context).some(Boolean);
+  const result = analysis.result;
+  const researchNode = Array.isArray(analysis.input?.tags) && typeof analysis.input.tags[0] === "string"
+    ? analysis.input.tags[0]
+    : typeof analysis.input?.category === "string" ? analysis.input.category : "Industry";
 
   return <motion.main className="mx-auto w-full max-w-[1440px] px-4 pb-24 pt-6 md:px-8 md:pt-10 xl:px-12"
     initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .35 }}>
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
       <Link href="/history" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-ink/10 px-4 transition-colors hover:border-coral hover:text-text focus-visible:outline-2 focus-visible:outline-coral"><span aria-hidden="true">←</span> All analyses</Link>
-      <div className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-lime"/><span>Saved analysis</span><span aria-hidden="true">·</span><time dateTime={analysis.created_at}>{date}</time></div>
+      <span className="inline-flex items-center gap-2"><span className="size-1.5 rounded-full bg-lime" aria-hidden="true"/>Saved analysis</span>
     </div>
 
-    <section className="relative isolate overflow-hidden rounded-[28px] border border-ink/10 bg-dark-surface p-6 surface-lift md:p-10 xl:p-12" aria-label="Analysis overview">
-      <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-40 -z-10 size-[420px] rounded-full bg-coral/10 blur-[90px]"/>
-      <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(250px,340px)] lg:gap-12">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="eyebrow rounded-full bg-coral-soft px-3 py-1.5 text-coral">Startup intelligence / {stageLabel}</span>
-            <span className="rounded-full border border-ink/10 px-3 py-1.5 text-xs text-muted">Historical model output</span>
-          </div>
-          <p className="mt-7 text-sm font-medium text-muted">A closer look at</p>
-          <h1 className="editorial-title mt-2 max-w-4xl break-words font-display">{analysis.title}<span className="text-coral">.</span></h1>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <a href="#model-trace" onClick={() => setTab("tree")} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold text-[var(--sage-ink)] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral">Explore the model trace <span aria-hidden="true">↘</span></a>
-            <button type="button" onClick={() => { setTab("cases"); document.getElementById("analysis-sections")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }); }} className="inline-flex min-h-12 items-center gap-2 rounded-full border border-ink/20 px-6 text-sm font-semibold transition-colors hover:border-coral focus-visible:outline-2 focus-visible:outline-coral">How similar startups failed <span aria-hidden="true">↗</span></button>
-          </div>
-          <p className="mt-6 max-w-xl text-xs leading-relaxed text-muted">Fragilee shows what this historical model used and links to separate research and company cases. Its available data do not support a validated forecast for this individual startup.</p>
-        </div>
-        <div className="analysis-grid-bg relative rounded-[24px] border border-ink/10 bg-dark-bg/40 px-3 py-4 md:px-6">
-          <SignalArt branches={r.tree.children}/>
-        </div>
-      </div>
-      <div className="mt-9 grid gap-3 border-t border-ink/10 pt-5 sm:grid-cols-2">
-        <div className="rounded-2xl bg-brand-coral-soft p-4">
-          <p className="eyebrow text-coral">Largest positive contribution</p>
-          <p className="mt-2 font-display text-2xl">{sum.up ?? "No positive contribution"}</p>
-          <p className="mt-1 text-xs text-muted">Historical model attribution · not a diagnosed vulnerability</p>
-        </div>
-        <div className="rounded-2xl bg-brand-acid-soft p-4">
-          <p className="eyebrow text-lime">Largest negative contribution</p>
-          <p className="mt-2 font-display text-2xl">{sum.down ?? "No negative contribution"}</p>
-          <p className="mt-1 text-xs text-muted">Historical model attribution · not evidence of protection</p>
-        </div>
-      </div>
+    <Overview analysis={analysis}/>
+
+    <section className="mt-6 rounded-[24px] border border-ink/10 bg-dark-surface p-5 md:p-7" aria-labelledby="technical-model-title">
+      <p className="eyebrow text-coral">Interactive startup analysis</p>
+      <h2 id="technical-model-title" className="mt-2 font-display text-2xl">Risk tree</h2>
+      <p className="mt-3 max-w-4xl text-sm leading-relaxed text-muted">The tree combines two separate paths: startup breakpoints from the structured profile, and historical TreeSHAP attribution from the classifier. Select a startup breakpoint to see what submitted information points to it, how it could break in practice, what remains unknown, and what to validate next. Historical model output is context, not a startup diagnosis.</p>
+      <div className="mt-5"><PlexTree result={result} title={analysis.title} analysisId={analysis.id} diagnostics={analysis.diagnostics_state === "available" ? analysis.diagnostics : null}/></div>
+      {analysis.diagnostics_state === "unavailable" && <p className="mt-4 rounded-xl border border-ink/10 p-4 text-sm text-muted" role="status">Startup diagnostics are unavailable for this saved analysis. The historical model trace and remaining report sections are still accessible.</p>}
     </section>
 
-    <section id="analysis-sections" className="scroll-mt-6 pt-14 md:pt-20">
-      <div id="model-trace" className="mb-7 flex flex-wrap items-end justify-between gap-4 scroll-mt-6">
-        <div><p className="eyebrow text-coral">Explore the signals</p><h2 className="mt-2 font-display text-3xl md:text-4xl">What moved the model?</h2><p className="mt-2 max-w-2xl text-sm text-muted">Select a node to inspect this run’s input and contribution. Research is fetched separately and does not change the score.</p></div>
-        <p className="max-w-sm text-xs text-muted">The model reflects historical associations. It cannot establish why a company failed or what will happen next.</p>
-      </div>
-      <ResultTabs active={tab} onChange={setTab} tabs={[
-        { id: "tree", label: "Model trace", panel: <PlexTree result={r} title={analysis.title} analysisId={analysis.id} context={analysis.context}/> },
-        { id: "cases", label: "How similar startups failed", panel: <CasesPanel data={cases} analysisId={analysis.id} researchNode={researchNode}/> },
-        ...(hasNotes ? [{ id: "notes", label: "Founder notes", panel: <Notes context={analysis.context!}/> }] : []),
-      ]}/>
+    <section id="evidence-examples" className="mt-8 scroll-mt-24" aria-labelledby="evidence-examples-title">
+      <div className="mb-5"><p className="eyebrow text-lime">Independent information sources</p><h2 id="evidence-examples-title" className="mt-2 font-display text-3xl">Research and historical examples</h2><p className="mt-2 max-w-3xl text-sm text-muted">External research, curated company reports, and model output are separate. None of them independently verifies the information you entered or proves what will happen to this startup.</p></div>
+      <CasesPanel data={cases} analysisId={analysis.id} researchNode={researchNode}/>
     </section>
 
-    <details className="mt-12 rounded-2xl border border-ink/10 bg-dark-surface p-5 text-sm">
-      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 font-semibold"><span>Limitations and methodology</span><span className="text-coral" aria-hidden="true">＋</span></summary>
-      <ul className="mt-3 list-disc space-y-2 pl-5 text-muted">{r.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
-      <p className="mt-4 border-t border-ink/10 pt-4 text-muted">{r.disclaimer}</p>
+    <details className="mt-10 rounded-2xl border border-ink/10 bg-dark-surface p-5 text-sm">
+      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 font-semibold focus-visible:outline-2 focus-visible:outline-coral"><span>Methodology limitations</span><span className="text-coral" aria-hidden="true">＋</span></summary>
+      <ul className="mt-3 list-disc space-y-2 pl-5 text-muted">{(Array.isArray(result?.limitations) ? result.limitations : []).map((limitation, index) => <li key={`${index}-${limitation}`}>{limitation}</li>)}</ul>
+      {result?.disclaimer && <p className="mt-4 border-t border-ink/10 pt-4 text-muted">{result.disclaimer}</p>}
     </details>
+
+    <details className="mt-10 rounded-[24px] border border-ink/10 bg-dark-surface p-5 md:p-7">
+      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 font-semibold focus-visible:outline-2 focus-visible:outline-coral"><span>Founder-submitted information, structured profile &amp; historical model context</span><span className="text-coral" aria-hidden="true">＋</span></summary>
+      <FounderInformation analysis={analysis}/>
+
+      <section className="mt-6 rounded-[24px] border border-coral/20 bg-dark-surface p-5 md:p-7" aria-labelledby="historical-model-context-title">
+        <p className="eyebrow text-coral">Historical model context</p>
+        <h2 id="historical-model-context-title" className="mt-2 font-display text-2xl">What this historical analysis can tell you</h2>
+        <p className="mt-3 max-w-4xl text-sm leading-relaxed text-muted">The statistical model learned patterns from companies with recorded final outcomes. Those data do not establish a consistent prediction time horizon or a prospective probability for this startup. No individual failure probability, risk band, or overall risk score is presented here.</p>
+        <p className="mt-3 max-w-4xl text-sm leading-relaxed text-muted">The model used the submitted location and industry fields (and, for older company-stage analyses, historical funding and company fields). It does not assess the free-text notes as verified facts. Model attribution is technical context about the classifier, not a diagnosis, causal explanation, or evidence that a weakness exists in this business.</p>
+        <dl className="mt-4 grid gap-x-6 gap-y-3 rounded-2xl border border-ink/10 bg-ink/5 p-4 text-sm sm:grid-cols-2">
+          <div><dt className="text-xs text-muted">Model artifact</dt><dd className="mt-1 break-all font-mono text-xs text-text" title={result?.model_version ?? undefined}>{result?.model_version ? result.model_version.slice(0, 16) : "Not recorded for this saved analysis"}</dd></div>
+          <div><dt className="text-xs text-muted">Prediction horizon</dt><dd className="mt-1 text-text">Not established by the available outcome data</dd></div>
+        </dl>
+        <p className="mt-4 text-xs leading-relaxed text-muted">The interactive tree is shown above the report. Its historical attribution and startup diagnostics remain separate selectable branches.</p>
+      </section>
+    </details>
+
   </motion.main>;
 }

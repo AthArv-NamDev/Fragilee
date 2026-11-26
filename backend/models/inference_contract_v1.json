@@ -1,0 +1,36 @@
+{
+  "contract_version": "1.0",
+  "status": "legacy_descriptive_only",
+  "redevelopment_status": "blocked_pending_data_readiness",
+  "stages": {
+    "stage1": {
+      "model_artifact": "stage1.json",
+      "feature_schema": ["country one-hot indicators", "state one-hot indicators", "industry-tag one-hot indicators", "capped tag count"],
+      "required_inputs": ["country", "tags"],
+      "conditional_inputs": ["state, required by API when country is USA"],
+      "prediction_horizon": null
+    },
+    "stage2": {
+      "model_artifact": "stage2.json",
+      "feature_schema": ["funding fields", "network relationship count", "industry category one-hot indicators", "state one-hot indicators"],
+      "required_inputs": ["category", "funding_total_usd", "funding_rounds", "has_VC", "has_angel", "has_roundA", "has_roundB", "has_roundC", "has_roundD", "avg_participants", "relationships", "age_first_funding_year", "age_last_funding_year"],
+      "optional_inputs": ["state"],
+      "prediction_horizon": null
+    }
+  },
+  "output": {
+    "legacy_probability_field_semantics": "Calibrated classifier score for closed versus acquired labels in an outcome-selected historical dataset; not a probability that a current individual startup will fail.",
+    "legacy_band_semantics": "Historical score band only; not an eligible prospective risk band.",
+    "similar_startups_failure_rate_semantics": "Training-sample closed share in a score band; not an individual probability.",
+    "inference_status": "legacy_descriptive_only",
+    "prediction_horizon": null,
+    "uncertainty": "No validated individual prediction uncertainty or prospective calibration is available.",
+    "limitations": ["Raw source/licence provenance is incomplete or unverified.", "Observation/index dates and prediction horizon are not established.", "Training cohorts contain terminal outcomes; right-censoring is not represented.", "Stage 2 relationships and funding fields may not have been observed before the outcome."]
+  },
+  "compatibility": {
+    "legacy_fields_retained": ["probability", "band", "similar_startups_failure_rate", "tree"],
+    "new_fields_additive": ["inference_status", "model_version", "feature_schema_version", "prediction_horizon", "output_semantics"],
+    "saved_analyses_without_contract_metadata": "remain readable; absent metadata is interpreted as legacy and is not backfilled"
+  },
+  "eligibility_gates": ["verified dataset source and licence", "predeclared index date and prediction horizon", "known feature observation timestamps", "active/right-censored comparison cohort", "time-aware independent test split", "calibration and subgroup evaluation"]
+}

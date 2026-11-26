@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-local-supabase/
 /out/
 
 # production
@@ -43,4 +44,11 @@ next-env.d.ts
 #backend
 .venv/
 .env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local Supabase CLI state (keep local state out of source control).
+/supabase/.temp/
+/supabase/.branches/
 backend/data/raw/

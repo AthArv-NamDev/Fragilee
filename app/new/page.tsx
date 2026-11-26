@@ -1,12 +1,11 @@
 import { connection } from "next/server";
 import NewAnalysisFlow from "./NewAnalysisFlow";
 import type { Meta } from "@/lib/types";
-
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+import { serverBackendUrl } from "@/lib/server-backend-url";
 
 async function getMeta(): Promise<Meta | null> {
   try {
-    const res = await fetch(`${API_URL}/v1/meta`, { cache: "no-store" });
+    const res = await fetch(`${serverBackendUrl()}/v1/meta`, { cache: "no-store" });
     return res.ok ? ((await res.json()) as Meta) : null;
   } catch {
     return null;

@@ -24,6 +24,9 @@ html[data-theme="light"] {
   --critical: #9E3B53;
   --critical-text: #8D3048;
   --critical-ink: #FFFFFF;
+  --hypothesis: #7253A3;
+  --info: #216E8A;
+  --tree-group: #68748E;
   --cream: #EDEAE2;
   --ink: #1E1B16;
   --coral: #A94428;
@@ -56,6 +59,9 @@ html[data-theme="dark"] {
   --critical: #B14C63;
   --critical-text: #E89AAA;
   --critical-ink: #FFFFFF;
+  --hypothesis: #B39DDB;
+  --info: #77BFE1;
+  --tree-group: #8E9BB8;
   --cream: #EDEAE2;
   --ink: #1E1B16;
   --coral: #FF805E;
@@ -92,6 +98,7 @@ html[data-theme="dark"] {
   --color-sun: var(--medium);
   --color-sand: var(--surface-2);
   --color-amber: var(--medium);
+  --color-info: var(--info);
   --color-forest: var(--surface);
   --color-brand-coral: var(--coral);
   --color-brand-coral-soft: var(--coral-soft);
@@ -118,6 +125,10 @@ body {
 }
 button { font-family: inherit; }
 a { color: inherit; }
+
+/* Keep CTA labels readable even when a page or legacy utility sets inherited text colors. */
+.button-label-on-sage { color: var(--sage-ink) !important; }
+.button-label-on-text { color: var(--bg) !important; }
 .font-display, .font-hero { font-weight: 400; letter-spacing: -.02em; line-height: 1.04; }
 .editorial-title { font-size: clamp(2.35rem, 6vw, 5.6rem); line-height: .92; letter-spacing: -.055em; }
 .eyebrow { font-size: .68rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }

@@ -33,11 +33,11 @@ export default async function Nav() {
             </div>
           </details>
           {signedIn ? (
-            <Link href="/dashboard" className="inline-flex min-h-11 items-center rounded-full bg-sage px-4 text-sm font-semibold text-[var(--sage-ink)] transition-transform hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral md:px-5">Dashboard</Link>
+            <Link href="/dashboard" className="inline-flex min-h-11 items-center rounded-full bg-sage px-4 text-sm font-semibold button-label-on-sage transition-transform hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral md:px-5">Dashboard</Link>
           ) : (
             <>
               <Link href="/login" className="hidden min-h-11 items-center rounded-full border border-ink/20 px-4 text-sm font-semibold transition-colors hover:border-coral md:inline-flex">Sign in</Link>
-              <Link href="/login?mode=signup" className="inline-flex min-h-11 items-center rounded-full bg-sage px-4 text-sm font-semibold text-[var(--sage-ink)] transition-transform hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral md:px-5">Sign up</Link>
+              <Link href="/login?mode=signup" className="inline-flex min-h-11 items-center rounded-full bg-sage px-4 text-sm font-semibold button-label-on-sage transition-transform hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral md:px-5">Sign up</Link>
             </>
           )}
         </div>

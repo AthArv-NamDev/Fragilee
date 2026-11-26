@@ -44,10 +44,16 @@ def test_library_has_recent_sources():
 
 
 # ---- retrieval ---------------------------------------------------------------------------------
-def test_exact_industry_match_comes_first():
-    found, matched = cases.retrieve(LIB, ["Photography"])
-    assert matched and found[0]["id"] == "everpix" and found[0]["matched_on"] == ["Industry: Photography"]
-    assert cases.retrieve(LIB, ["Health Care"])[0][0]["id"] == "pear"
+def test_industry_tag_alone_is_not_enough_but_profile_overlap_is_explained():
+    assert cases.retrieve(LIB, ["Photography"]) == ([], False)
+    found, matched = cases.retrieve(LIB, ["Photography"], {"concept": "photo storage app for consumers", "startup_stage": "idea"})
+    assert matched and found[0]["id"] == "everpix"
+    assert found[0]["match_category"] == "industry_adjacent"
+    assert any("Industry tag overlap" in item for item in found[0]["shared_characteristics"])
+    assert any("stage" in item for item in found[0]["important_differences"])
+    assert found[0]["outcome_status"] == "failure_example_in_curated_failure_only_collection"
+    assert "predict" in " ".join(found[0]["comparison_limitations"])
+    assert cases.retrieve(LIB, ["Health Care"])[0] == []
 
 
 def test_related_field_alone_is_not_enough_to_claim_a_match():
@@ -58,8 +64,10 @@ def test_related_field_alone_is_not_enough_to_claim_a_match():
 def test_the_idea_text_can_break_a_tie():
     base, _ = cases.retrieve(LIB, ["Software"], {}, limit=3)
     boosted, _ = cases.retrieve(LIB, ["Software"], {"concept": "a hardware gadget with an assistant for consumers"}, limit=3)
-    assert boosted[0]["id"] == "humane" and base[0]["id"] != "humane"
-    assert any(m.startswith("Idea terms") for m in boosted[0]["matched_on"])
+    assert base == []
+    assert boosted[0]["id"] == "humane"
+    assert boosted[0]["match_category"] == "contextual"
+    assert any(m.startswith("Profile term") for m in boosted[0]["matched_on"])
 
 
 def test_nothing_similar_does_not_show_unrelated_general_lessons():
@@ -69,7 +77,7 @@ def test_nothing_similar_does_not_show_unrelated_general_lessons():
 
 def test_limit_order_and_determinism():
     a = cases.retrieve(LIB, ["Software", "Mobile"], {"concept": "photo app"}, limit=2)
-    assert a == cases.retrieve(LIB, ["Software", "Mobile"], {"concept": "photo app"}, limit=2) and len(a[0]) == 2
+    assert a == cases.retrieve(LIB, ["Software", "Mobile"], {"concept": "photo app"}, limit=2) and len(a[0]) == 1
     assert len(cases.retrieve(LIB, ["Software"], limit=5)[0]) <= 5
 
 
@@ -87,18 +95,91 @@ def make(client, tags=("Photography",), headers=None, ctx=None):
 
 
 def test_cases_endpoint_returns_sources_for_my_analysis(client):
-    aid = make(client)
+    aid = make(client, ctx={"concept": "photo storage app for consumers"})
     r = client.get(f"/v1/analyses/{aid}/cases", headers=headers_for(USER_A))
     assert r.status_code == 200
     body = r.json()
     assert body["matched"] and body["cases"][0]["name"] == "Everpix" and body["cases"][0]["sources"][0]["url"].startswith("https://")
-    assert "not predictions" in body["note"]
+    assert "not representative" in body["note"] and body["library_count"] == len(LIB)
+    assert body["cases"][0]["match_category"] == "industry_adjacent"
     assert "keywords" not in r.text
 
 
 def test_cases_use_the_founders_notes_too(client):
     aid = make(client, ("Software",), ctx={"concept": "a wearable gadget with a voice assistant"})
     assert client.get(f"/v1/analyses/{aid}/cases?limit=1", headers=headers_for(USER_A)).json()["cases"][0]["name"] == "Humane"
+
+
+def test_structured_marketplace_profile_matches_only_explicit_case_business_model(client):
+    aid = make(client, ("Services",), ctx={"profile": {"identity": {"business_model": "marketplace", "stage": "idea_concept", "operating_geography": "India"}}})
+    response = client.get(f"/v1/analyses/{aid}/cases", headers=headers_for(USER_A))
+    assert response.status_code == 200
+    assert response.json()["cases"][0]["id"] == "homejoy"
+    assert response.json()["cases"][0]["match_category"] == "direct_business_model"
+    assert "geography" in response.json()["cases"][0]["important_differences"][0]
+
+
+def test_duplicate_case_ids_are_returned_once():
+    duplicate = dict(LIB[0])
+    found, matched = cases.retrieve([*LIB, duplicate], ["Photography"], {"concept": "photo storage app"})
+    assert matched and len([item for item in found if item["id"] == "everpix"]) == 1
+
+
+def test_different_industries_can_match_on_a_shared_documented_mechanism():
+    found, matched = cases.retrieve(LIB, ["Food"], {"biggest_worry": "Cash burn and runway pressure"})
+    assert matched and found
+    assert all(item["match_category"] == "mechanism_based" for item in found)
+    assert any("cash runway" in shared for item in found for shared in item["shared_characteristics"])
+    assert all(not any(shared.startswith("Industry tag overlap") for shared in item["shared_characteristics"]) for item in found)
+
+
+def test_ecocart_does_not_receive_unsupported_customer_acquisition_matches():
+    context = {
+        "concept": "EcoCart is a marketplace that connects environmentally conscious shoppers with sellers offering sustainable and eco-friendly products. It helps customers discover trustworthy alternatives to conventional products while giving small sustainable brands a platform to reach more buyers.",
+        "vision": "Become a trusted marketplace for sustainable products in India, connecting verified eco-friendly brands with customers while building a reliable and scalable seller network.",
+        "customer": "Environment-conscious shoppers",
+        "revenue_model": "Commission on marketplace transactions",
+        "biggest_worry": "Limited customer adoption, difficulty verifying genuinely sustainable sellers, building trust in product claims, and balancing customer acquisition costs with marketplace revenue in the early stages",
+        "profile": {
+            "identity": {"business_model": "marketplace", "operating_geography": "India"},
+            "customer_market": {"customer_segment": "Environment-conscious shoppers"},
+            "business_model_details": {"buyer_group": "Environment-conscious shoppers", "seller_group": "Small sustainable brands"},
+        },
+    }
+
+    found, matched = cases.retrieve(
+        LIB, ["E-Commerce", "Marketplaces", "Retail", "Clean Technology", "Shopping"], context, limit=5,
+    )
+    by_id = {item["id"]: item for item in found}
+
+    assert matched
+    assert by_id["homejoy"]["match_category"] == "direct_business_model"
+    assert by_id["fab"]["match_category"] == "industry_adjacent"
+    assert "everpix" not in by_id  # only two generic lexical overlaps; no supported mechanism
+    assert "bowery" not in by_id  # one broad industry tag plus generic cost/sustainability terms is too weak
+    assert "builderai" not in by_id  # generic building/platform/revenue words do not make a contextual match
+    assert all(
+        not any("customer acquisition" in text.casefold() for text in item["shared_characteristics"])
+        for item in found
+    )
+
+
+def test_unknown_case_outcome_stays_unknown():
+    record = {"id": "unknown", "name": "Unknown", "years": "unknown", "sector": "photo app",
+              "what": "A photo storage app", "how_it_failed": "", "reasons": [], "industries": ["Photography"],
+              "keywords": ["photo", "storage", "app"], "sources": [], "verified_on": "2026-01-01"}
+    found, _ = cases.retrieve([record], ["Photography"], {"concept": "photo storage app"})
+    assert found[0]["outcome_status"] == "unknown"
+    assert "does not establish" in found[0]["historical_outcome"]
+
+
+def test_acquisition_is_not_normalized_to_success():
+    record = {"id": "acquired", "name": "AcquiredCo", "years": "unknown", "sector": "photo app",
+              "what": "A photo storage app", "how_it_failed": "", "reasons": [], "industries": ["Photography"],
+              "keywords": ["photo", "storage", "app"], "sources": [], "verified_on": "2026-01-01", "outcome_status": "acquired"}
+    found, _ = cases.retrieve([record], ["Photography"], {"concept": "photo storage app"})
+    assert found[0]["outcome_status"] == "acquired"
+    assert "not treated as equivalent" in found[0]["historical_outcome"]
 
 
 def test_cases_need_login_and_respect_ownership(client, anon_client):

@@ -1,0 +1,217 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Provenance inventory for current historical outcome data. Presence of a local artifact does not establish licence, observation time, or training eligibility.",
+  "datasets": [
+    {
+      "dataset_id": "stage1_crunchbase_processed",
+      "stage": "stage1",
+      "source_name": "Big Startup Success / Crunchbase-derived dataset",
+      "source_location": "Kaggle slug referenced by project source: yanmaksi/big-startup-secsees-fail-dataset-from-crunchbase",
+      "publisher": "Kaggle contributor; upstream Crunchbase attribution is reported in dataset name, not independently verified",
+      "dataset_version": null,
+      "retrieval_date": null,
+      "license": "unverified; review Kaggle dataset licence and Crunchbase terms before reuse",
+      "license_status": "unverified",
+      "raw_artifact": null,
+      "processed_artifact": {
+        "path": "data/processed/stage1_clean.csv",
+        "sha256": "be1791575e6a1654addce2bfbccc0c51eb19aedc0684353dc2f2a317698ddb48",
+        "bytes": 470703,
+        "rows": 10941,
+        "columns": 5,
+        "column_names": [
+          "failed",
+          "country",
+          "state",
+          "tags",
+          "founded_year"
+        ]
+      },
+      "target_definition": "failed=1 when status == closed; failed=0 for acquired or IPO in clean.py",
+      "target_statuses": [
+        "closed",
+        "acquired",
+        "ipo"
+      ],
+      "processing_script": "scripts/clean.py",
+      "processed_rows": 10941,
+      "known_limitations": [
+        "raw file is absent in this checkout",
+        "processed artifact provenance/version cannot be independently tied to a licensed upstream release",
+        "only terminal outcomes retained; active companies excluded",
+        "prediction/index date and event/follow-up horizon not present",
+        "country and industry features have no verified measurement timestamp"
+      ],
+      "training_eligible": false,
+      "eligibility_blockers": [
+        "raw_source_missing",
+        "license_unverified",
+        "observation_time_unknown",
+        "no_prediction_horizon",
+        "terminal_outcomes_only"
+      ],
+      "collection_date": null,
+      "license_review_note": "Current dataset-specific terms have not been verified; do not redeploy or redistribute without that review.",
+      "missing_value_handling": "Drop rows with unknown country/US state and empty tags; founded_year can remain missing. Exact processed-only lineage remains unverified.",
+      "reproducible_preparation_command": "python scripts/clean.py data/raw /tmp/fragilee-phase5-clean",
+      "inclusion_exclusion_criteria": [
+        "Retain acquired, IPO and closed statuses.",
+        "Require non-empty industry tags.",
+        "Drop rows with unknown country and unknown US state.",
+        "Only processed output remains; the raw cohort cannot be regenerated in this checkout."
+      ],
+      "transformation_history": [
+        "Deduplicate on permalink.",
+        "Map status closed to failed=1; acquired/IPO to failed=0.",
+        "Split category_list into tags.",
+        "Normalize missing country/state markers.",
+        "Restrict founded year to 1990\u20132014 for a time-based check only.",
+        "Write failed,country,state,tags,founded_year to stage1_clean.csv."
+      ],
+      "duplicate_handling": "Drop duplicate permalink rows; count of raw duplicates cannot be re-verified because the Stage 1 raw file is absent."
+    },
+    {
+      "dataset_id": "stage2_kaggle_startup_success",
+      "stage": "stage2",
+      "source_name": "Startup Success Prediction",
+      "source_location": "Kaggle slug referenced by project source: manishkc06/startup-success-prediction",
+      "publisher": "Kaggle contributor; file is a Crunchbase-derived dataset according to project metadata; provider chain not independently verified",
+      "dataset_version": null,
+      "retrieval_date": null,
+      "license": "unverified; review current Kaggle dataset licence and upstream Crunchbase terms before reuse",
+      "license_status": "unverified",
+      "raw_artifact": {
+        "path": "data/raw/startup data.csv",
+        "sha256": "48fb89d773ad5552511f61561a4a3d7f01b94224ecfaaec40dd719b6db1d998c",
+        "bytes": 210063,
+        "rows": 923,
+        "columns": 49,
+        "column_names": [
+          "Unnamed: 0",
+          "state_code",
+          "latitude",
+          "longitude",
+          "zip_code",
+          "id",
+          "city",
+          "Unnamed: 6",
+          "name",
+          "labels",
+          "founded_at",
+          "closed_at",
+          "first_funding_at",
+          "last_funding_at",
+          "age_first_funding_year",
+          "age_last_funding_year",
+          "age_first_milestone_year",
+          "age_last_milestone_year",
+          "relationships",
+          "funding_rounds",
+          "funding_total_usd",
+          "milestones",
+          "state_code.1",
+          "is_CA",
+          "is_NY",
+          "is_MA",
+          "is_TX",
+          "is_otherstate",
+          "category_code",
+          "is_software",
+          "is_web",
+          "is_mobile",
+          "is_enterprise",
+          "is_advertising",
+          "is_gamesvideo",
+          "is_ecommerce",
+          "is_biotech",
+          "is_consulting",
+          "is_othercategory",
+          "object_id",
+          "has_VC",
+          "has_angel",
+          "has_roundA",
+          "has_roundB",
+          "has_roundC",
+          "has_roundD",
+          "avg_participants",
+          "is_top500",
+          "status"
+        ]
+      },
+      "processed_artifact": {
+        "path": "data/processed/startup_clean.csv",
+        "sha256": "b2dc4c61c61f6dce3758c0608020103b25ee737828ac12b2e99be18d58288afc",
+        "bytes": 57531,
+        "rows": 922,
+        "columns": 16,
+        "column_names": [
+          "failed",
+          "category",
+          "state",
+          "founded_year",
+          "funding_total_usd",
+          "funding_rounds",
+          "has_VC",
+          "has_angel",
+          "has_roundA",
+          "has_roundB",
+          "has_roundC",
+          "has_roundD",
+          "avg_participants",
+          "relationships",
+          "age_first_funding_year",
+          "age_last_funding_year"
+        ]
+      },
+      "raw_counts": {
+        "rows": 923,
+        "columns": 49,
+        "duplicate_object_id_rows": 1,
+        "closed_rows": 326,
+        "acquired_rows": 597
+      },
+      "processed_counts": {
+        "rows": 922,
+        "columns": 16,
+        "closed_rows": 326,
+        "acquired_rows": 596
+      },
+      "target_definition": "failed=1 when status == closed; failed=0 when status == acquired; acquisition is not failure but is grouped as the alternative terminal outcome",
+      "processing_script": "scripts/clean.py",
+      "known_limitations": [
+        "US-only cohort according to project data card",
+        "terminal outcomes only; no right-censored active cohort",
+        "no declared index date or fixed prediction horizon",
+        "feature measurement dates are not shown to precede a prediction date",
+        "relationships may encode company maturity or post-outcome collection",
+        "funding history fields are not aligned to a predeclared observation date"
+      ],
+      "training_eligible": false,
+      "eligibility_blockers": [
+        "license_unverified",
+        "observation_time_unknown",
+        "no_prediction_horizon",
+        "terminal_outcomes_only",
+        "relationships_leakage_risk",
+        "funding_snapshot_time_unknown"
+      ],
+      "collection_date": null,
+      "license_review_note": "Current dataset-specific terms have not been verified; do not redeploy or redistribute without that review.",
+      "missing_value_handling": "scripts/clean.py asserts that selected Stage 2 numeric inputs are complete. Missing founded_at-derived year is retained but not a model feature. No missing selected feature is imputed.",
+      "reproducible_preparation_command": "python scripts/clean.py data/raw /tmp/fragilee-phase5-clean",
+      "inclusion_exclusion_criteria": [
+        "Use the Kaggle file referenced by clean.py.",
+        "Deduplicate repeated object_id (one row removed).",
+        "Map status closed to failed=1 and acquired to failed=0; no IPO rows in this file."
+      ],
+      "transformation_history": [
+        "Drop duplicate object_id.",
+        "Derive founded_year from founded_at (not a model feature).",
+        "Group category_code and state_code values occurring fewer than 10 times.",
+        "Select 12 numeric funding/network inputs plus category,state,founded_year.",
+        "Drop labels, closed_at, identifiers, coordinates and high-leakage milestone fields."
+      ],
+      "duplicate_handling": "One repeated object_id removed: 923 raw rows to 922 processed rows."
+    }
+  ]
+}

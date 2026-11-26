@@ -14,7 +14,7 @@ export default function Hero() {
         Still think your idea is bulletproof? <strong className="text-ink">Test it against the cracks.</strong>
       </p>
       <div className="mt-7 flex flex-wrap justify-center gap-3">
-        <Link href="/new" className={`${button} bg-text text-dark-bg`}>Test my idea <span aria-hidden="true" className="ml-2">→</span></Link>
+        <Link href="/new" className={`${button} bg-text button-label-on-text`}>Test my idea <span aria-hidden="true" className="ml-2">→</span></Link>
         <Link href="/login?mode=signup" className={`${button} border border-ink/25 text-text hover:bg-ink/5`}>Sign up</Link>
       </div>
       <p className="mt-5 text-xs text-ink/55">Free during beta · Private to you · Historical patterns, not predictions.</p>

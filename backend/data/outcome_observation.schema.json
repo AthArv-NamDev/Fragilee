@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fragilee.local/schemas/outcome-observation-1.0.json",
+  "title": "Fragilee Outcome Observation",
+  "description": "A sourced, time-stamped status observation. This is not a training label; label construction additionally requires a predeclared index date and horizon.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_id", "company_key", "observed_at", "status", "sources", "recorded_at"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "observation_id": {"type": "string", "format": "uuid"},
+    "company_key": {"type": "string", "minLength": 1, "maxLength": 128, "description": "Stable pseudonymous identifier; must not contain company names or personal data."},
+    "observed_at": {"type": "string", "format": "date"},
+    "status": {"enum": ["operational_active", "inactive_dormant", "confirmed_closure", "acquired", "ipo", "merged", "bankruptcy_insolvency", "unknown", "right_censored"]},
+    "event_date": {"type": ["string", "null"], "format": "date"},
+    "follow_up_due": {"type": ["string", "null"], "format": "date"},
+    "recorded_at": {"type": "string", "format": "date"},
+    "supersedes_observation_id": {"type": ["string", "null"], "format": "uuid"},
+    "sources": {
+      "type": "array", "minItems": 1, "maxItems": 20,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["source_name", "source_url", "retrieved_at", "evidence_note", "verification_state"],
+        "properties": {
+          "source_name": {"type": "string", "minLength": 1, "maxLength": 200},
+          "source_url": {"type": "string", "format": "uri", "maxLength": 2000},
+          "retrieved_at": {"type": "string", "format": "date"},
+          "evidence_note": {"type": "string", "minLength": 1, "maxLength": 1000},
+          "verification_state": {"enum": ["pending", "verified", "rejected"]}
+        }
+      }
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"enum": ["confirmed_closure", "acquired", "ipo", "merged", "bankruptcy_insolvency"]}}}, "then": {"required": ["event_date"]}},
+    {"if": {"properties": {"status": {"const": "right_censored"}}}, "then": {"required": ["follow_up_due"]}}
+  ]
+}

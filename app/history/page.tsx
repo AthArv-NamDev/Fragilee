@@ -17,7 +17,7 @@ export default async function HistoryPage() {
           <h1 className="editorial-title mt-3 max-w-3xl font-display">Saved <span className="text-coral">thinking.</span></h1>
           <p className="mt-4 max-w-[60ch] text-sm text-muted">Revisit a saved startup read, inspect its model trace, and follow the research and case sources.</p>
         </div>
-        <Link href="/new" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold text-[var(--sage-ink)] transition-transform hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet">Start a new read <span aria-hidden="true">↗</span></Link>
+        <Link href="/new" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold button-label-on-sage transition-transform hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet">Start a new read <span aria-hidden="true">↗</span></Link>
         </div>
       </div>
       {res.ok ? (

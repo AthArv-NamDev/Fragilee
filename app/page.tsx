@@ -12,7 +12,7 @@ import FragileeHeroScene from "@/components/landing/FragileeHeroScene";
 import Marquee from "@/components/landing/Marquee";
 import StartupPathways from "@/components/landing/StartupPathways";
 
-const ink = "inline-flex min-h-11 items-center rounded-full bg-text text-dark-bg font-hero font-semibold px-7 py-3 hover:-translate-y-0.5 transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet";
+const ink = "inline-flex min-h-11 items-center rounded-full bg-text button-label-on-text font-hero font-semibold px-7 py-3 hover:-translate-y-0.5 transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet";
 const outline = "inline-flex min-h-11 items-center rounded-full border border-ink/25 text-text font-semibold px-7 py-3 hover:bg-ink/5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet";
 const eyebrow = "font-hero font-extrabold uppercase tracking-wide text-sm";
 const h2 = "font-hero font-black uppercase leading-[.95] tracking-tight";
@@ -30,7 +30,7 @@ export default function Home() {
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted md:text-lg">Explore what historical startup models use, inspect source-linked research and company stories, and decide what to validate next. Fragilee is a lens on the past, not a forecast for your idea.</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/new" className="inline-flex min-h-12 items-center gap-3 rounded-full bg-sage px-6 text-sm font-semibold text-[var(--sage-ink)] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral">Explore your startup <span aria-hidden="true">↗</span></Link>
+              <Link href="/new" className="inline-flex min-h-12 items-center gap-3 rounded-full bg-sage px-6 text-sm font-semibold button-label-on-sage transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral">Explore your startup <span aria-hidden="true">↗</span></Link>
               <Link href="#how" className="inline-flex min-h-12 items-center gap-3 rounded-full border border-ink/25 px-6 text-sm font-semibold text-text transition-colors hover:border-coral hover:bg-ink/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral">How it works <span aria-hidden="true">↓</span></Link>
             </div>
             <p className="mt-5 text-xs text-muted">Free during beta · Level 1 model uses place and industry · Notes stay separate</p>

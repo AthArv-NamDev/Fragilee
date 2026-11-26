@@ -1,4 +1,7 @@
 """Turns a validated request into: probability, risk band and a risk tree built from SHAP."""
+import hashlib
+import json
+
 import pandas as pd
 
 from .features import BANDS, apply_platt, assign_band, build_stage1, build_stage2, risk_group
@@ -96,6 +99,11 @@ def _predict(store, stage, X, notes, limitations):
     return {
         "stage": stage, "probability": round(p, 2), "band": band,
         "similar_startups_failure_rate": sm.entry["band_observed_failure_rate"][band], "confidence": None,
+        "inference_status": "legacy_descriptive_only",
+        "model_version": sm.entry["sha256"],
+        "feature_schema_version": hashlib.sha256(json.dumps(sm.features, separators=(",", ":")).encode()).hexdigest(),
+        "prediction_horizon": None,
+        "output_semantics": "historical_terminal_outcome_association",
         "benchmark": BENCHMARKS[stage],
         "tree": {"label": f"Failure risk: {band}", "band": band, "probability": round(p, 2),
                  "children": _explain(sm, X, sv)},

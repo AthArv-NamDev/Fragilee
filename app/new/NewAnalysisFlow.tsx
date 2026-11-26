@@ -5,22 +5,28 @@ import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { COUNTRY_NAMES, OTHER_COUNTRY, STATE_NAMES, US_STATES } from "@/lib/geo";
-import type { Context } from "@/lib/types";
+import type { BusinessModelType, Context, ProfileMetric, ProfileStage, Provenance } from "@/lib/types";
 
 const MAX_TAGS = 5;
 const MIN_CONCEPT = 10;
 type StepId = "name" | "concept" | "vision" | "details" | "country" | "state" | "tags" | "review";
 type Props = { countries: string[]; states: string[]; tags: string[] };
-
-const STAGES: [NonNullable<Context["startup_stage"]>, string][] = [
-  ["idea", "Just an idea"], ["prototype", "Prototype"], ["launched", "Launched"], ["earning", "Earning money"],
+type MetricDraft = { field_id: string; value: string; currency: string; provenance: Provenance; period: string };
+const METRIC_CHOICES: [string, string, string, boolean, boolean][] = [
+  ["customer_interviews", "Customer interviews", "interviews", false, false], ["paying_customers", "Paying customers", "customers", false, false], ["active_users", "Active users", "users", false, false],
+  ["growth_rate", "Growth rate", "percent", false, true], ["retention_rate", "Retention rate", "percent", false, true], ["churn_rate", "Churn rate", "percent", false, true],
+  ["signed_contracts", "Signed contracts", "contracts", false, false], ["preorders", "Pre-orders", "orders", false, false], ["pilots", "Pilots", "pilots", false, false],
+  ["average_selling_price", "Average selling price", "currency/customer", true, false], ["variable_cost_per_unit", "Variable cost per unit", "currency/unit", true, false], ["gross_margin", "Gross margin", "percent", false, false], ["contribution_margin", "Contribution margin", "percent", false, false],
+  ["customer_acquisition_cost", "Customer acquisition cost", "currency/customer", true, false], ["cac_payback_period", "CAC payback period", "months", false, false], ["cash_balance", "Cash balance", "currency", true, false], ["monthly_operating_expense", "Monthly operating expense", "currency/month", true, false], ["runway", "Runway", "months", false, false],
+  ["average_contract_value", "Average contract value", "currency/year", true, false], ["sales_cycle", "Sales cycle", "days", false, false], ["transaction_volume", "Transaction volume", "currency", true, false], ["take_rate", "Take rate", "percent", false, false], ["active_buyers", "Active buyers", "buyers", false, false], ["active_sellers", "Active sellers", "sellers", false, false], ["repeat_transactions", "Repeat transactions", "percent", false, false],
+  ["orders", "Orders", "orders", false, false], ["average_order_value", "Average order value", "currency/order", true, false], ["repeat_purchase_rate", "Repeat purchase rate", "percent", false, false], ["fulfilment_cost", "Fulfilment cost", "currency/order", true, false], ["bill_of_materials", "Bill of materials", "currency/unit", true, false], ["minimum_order_quantity", "Minimum order quantity", "units", false, false], ["utilization", "Utilization", "percent", false, false], ["revenue_per_delivery_unit", "Revenue per delivery unit", "currency/unit", true, false],
 ];
 
 const card = "text-left rounded-2xl border p-5 transition-colors focus-visible:outline-2 focus-visible:outline-white";
 const idle = "bg-dark-surface border-ink/10 hover:border-violet";
 const chosen = "bg-violet/20 border-violet";
 const input = "w-full bg-dark-surface border border-ink/10 rounded-lg px-4 py-3 text-text";
-const primary = "min-h-11 rounded-full bg-sage px-8 font-semibold text-[var(--sage-ink)] transition-colors hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet disabled:opacity-50 disabled:cursor-not-allowed";
+const primary = "min-h-11 rounded-full bg-sage px-8 font-semibold button-label-on-sage transition-colors hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet disabled:opacity-50 disabled:cursor-not-allowed";
 
 export default function NewAnalysisFlow({ countries, states, tags }: Props) {
   const router = useRouter();
@@ -31,9 +37,23 @@ export default function NewAnalysisFlow({ countries, states, tags }: Props) {
   const [vision, setVision] = useState("");
   const [customer, setCustomer] = useState("");
   const [revenue, setRevenue] = useState("");
-  const [stage, setStage] = useState<Context["startup_stage"]>();
   const [team, setTeam] = useState("");
   const [worry, setWorry] = useState("");
+  const [businessModel, setBusinessModel] = useState<BusinessModelType | "">("");
+  const [profileStage, setProfileStage] = useState<ProfileStage | "">("");
+  const [customerType, setCustomerType] = useState<"b2b" | "b2c" | "b2b2c" | "other" | "not_sure_yet" | "">("");
+  const [customerSegment, setCustomerSegment] = useState("");
+  const [profileProblem, setProfileProblem] = useState("");
+  const [profileSolution, setProfileSolution] = useState("");
+  const [profileExtras, setProfileExtras] = useState<Record<string, string>>({});
+  const [fundingStatus, setFundingStatus] = useState("");
+  const [metricDrafts, setMetricDrafts] = useState<MetricDraft[]>([]);
+  const [productStatus, setProductStatus] = useState<"concept" | "prototype" | "mvp" | "beta" | "launched" | "not_sure_yet" | "">("");
+  const [modelDetail, setModelDetail] = useState("");
+  const [metricProvenance, setMetricProvenance] = useState<Provenance>("measured");
+  const [monthlyRevenue, setMonthlyRevenue] = useState("");
+  const [revenueCurrency, setRevenueCurrency] = useState("USD");
+  const [revenueProvenance, setRevenueProvenance] = useState<Provenance>("measured");
   const [country, setCountry] = useState<string | null>(null);
   const [state, setState] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
@@ -41,6 +61,7 @@ export default function NewAnalysisFlow({ countries, states, tags }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const submissionInProgress = useRef(false);
 
   const steps: StepId[] = useMemo(
     () => (country === "USA"
@@ -79,16 +100,92 @@ export default function NewAnalysisFlow({ countries, states, tags }: Props) {
     if (vision.trim()) c.vision = vision.trim();
     if (customer.trim()) c.customer = customer.trim();
     if (revenue.trim()) c.revenue_model = revenue.trim();
-    if (stage) c.startup_stage = stage;
-    const n = Number(team);
-    if (team.trim() && Number.isInteger(n) && n >= 1 && n <= 500) c.team_size = n;
     if (worry.trim()) c.biggest_worry = worry.trim();
+    const profile: NonNullable<Context["profile"]> = { profile_schema_version: 1, last_updated_at: new Date().toISOString().slice(0, 10) };
+    const identity: NonNullable<typeof profile.identity> = {};
+    if (businessModel) identity.business_model = businessModel;
+    if (profileStage) identity.stage = profileStage;
+    if (profileProblem.trim()) identity.problem = profileProblem.trim();
+    if (profileSolution.trim()) identity.proposed_solution = profileSolution.trim();
+    if (country) identity.operating_geography = place;
+    const extra = (key: string) => profileExtras[key]?.trim() || undefined;
+    const customerProfile = { ...(customerType ? { customer_type: customerType } : {}), ...(customerSegment.trim() ? { customer_segment: customerSegment.trim() } : {}), ...(extra("customer_description") ? { customer_description: extra("customer_description") } : {}), ...(extra("discovery_evidence") ? { discovery_evidence: extra("discovery_evidence") } : {}), ...(extra("willingness_to_pay_evidence") ? { willingness_to_pay_evidence: extra("willingness_to_pay_evidence") } : {}), ...(extra("existing_alternatives") ? { existing_alternatives: extra("existing_alternatives") } : {}), ...(extra("market_size_assumption") ? { market_size_assumption: extra("market_size_assumption") } : {}) };
+    if (Object.keys(customerProfile).length) profile.customer_market = customerProfile;
+    const tractionProfile = { ...(productStatus ? { product_status: productStatus } : {}), ...(extra("customer_validation") ? { customer_validation: extra("customer_validation") } : {}), ...(extra("acquisition_channel") ? { acquisition_channel: extra("acquisition_channel") } : {}) };
+    if (Object.keys(tractionProfile).length) profile.product_traction = tractionProfile;
+    const financeProfile = { ...(fundingStatus ? { funding_status: fundingStatus as NonNullable<typeof profile.finance>["funding_status"] } : {}), ...(extra("funding_sources") ? { funding_sources: extra("funding_sources") } : {}), ...(extra("upcoming_milestones") ? { upcoming_milestones: extra("upcoming_milestones") } : {}) };
+    if (Object.keys(financeProfile).length) profile.finance = financeProfile;
+    const operationsProfile = { ...(extra("team_capabilities") ? { team_capabilities: extra("team_capabilities") } : {}), ...(extra("capability_gaps") ? { capability_gaps: extra("capability_gaps") } : {}), ...(extra("critical_dependencies") ? { critical_dependencies: extra("critical_dependencies") } : {}), ...(extra("suppliers_or_distribution") ? { suppliers_or_distribution: extra("suppliers_or_distribution") } : {}), ...(extra("technology_constraints") ? { technology_constraints: extra("technology_constraints") } : {}), ...(extra("regulatory_context") ? { regulatory_context: extra("regulatory_context") } : {}) };
+    if (Object.keys(operationsProfile).length || profile.team_operations) profile.team_operations = { ...operationsProfile, ...(profile.team_operations ?? {}) };
+    const detailKey: Partial<Record<BusinessModelType, string>> = { b2b_saas: "sales_cycle_notes", marketplace: "liquidity_notes", dtc_ecommerce: "fulfilment_notes", hardware: "tooling_and_production", fintech: "infrastructure_dependencies", biotech_medtech: "regulatory_pathway", services_consulting: "delivery_capacity_notes" };
+    if (businessModel && modelDetail.trim() && detailKey[businessModel]) {
+      profile.business_model_details = { kind: businessModel, [detailKey[businessModel]!]: modelDetail.trim() } as NonNullable<typeof profile.business_model_details>;
+    }
+    if (monthlyRevenue.trim() && revenueProvenance !== "unknown" && revenueProvenance !== "not_applicable") {
+      const amount = Number(monthlyRevenue);
+      if (Number.isFinite(amount) && amount >= 0 && /^[A-Z]{3}$/.test(revenueCurrency)) {
+        profile.economics = { ...(extra("pricing_model") ? { pricing_model: extra("pricing_model") } : {}), metrics: [{ field_id: "revenue_amount", value: amount, unit: "currency", currency: revenueCurrency, period: "month", provenance: revenueProvenance, confirmed_by_user: true, applicability: "applicable" }] };
+      }
+    } else if (revenueProvenance === "unknown" || revenueProvenance === "not_applicable") {
+      profile.economics = { ...(extra("pricing_model") ? { pricing_model: extra("pricing_model") } : {}), metrics: [{ field_id: "revenue_amount", provenance: revenueProvenance, confirmed_by_user: true, applicability: revenueProvenance }] };
+    } else if (extra("pricing_model")) {
+      profile.economics = { pricing_model: extra("pricing_model") };
+    }
+    if (businessModel || profileStage || profileProblem.trim() || profileSolution.trim() || country) profile.identity = identity;
+    const teamValue = Number(team);
+    if (metricProvenance !== "unknown" && metricProvenance !== "not_applicable" && team.trim() && Number.isInteger(teamValue) && teamValue >= 1 && teamValue <= 500) {
+      const metric: ProfileMetric = { field_id: "team_size", value: teamValue, unit: "people", provenance: metricProvenance, confirmed_by_user: true, applicability: "applicable" };
+      profile.team_operations = { ...(profile.team_operations ?? {}), metrics: [...(profile.team_operations?.metrics ?? []), metric] };
+    }
+    // Explicit unknown and not-applicable states are retained, never translated into zero.
+    if (metricProvenance === "unknown" || metricProvenance === "not_applicable") {
+      profile.team_operations = { ...(profile.team_operations ?? {}), metrics: [...(profile.team_operations?.metrics ?? []), { field_id: "team_size", provenance: metricProvenance, confirmed_by_user: true, applicability: metricProvenance }] };
+    }
+    for (const draft of metricDrafts) {
+      const choice = METRIC_CHOICES.find(([id]) => id === draft.field_id);
+      if (!choice) continue;
+      const [field_id, , unit, needsCurrency, needsPeriod] = choice;
+      const unknown = draft.provenance === "unknown" || draft.provenance === "not_applicable";
+      const value = draft.value.trim() ? Number(draft.value) : undefined;
+      if (!unknown && (value === undefined || !Number.isFinite(value))) continue;
+      const metric: ProfileMetric = { field_id: field_id as ProfileMetric["field_id"], ...(unknown ? {} : { value, unit, ...(needsCurrency ? { currency: draft.currency } : {}), ...(needsPeriod ? { period: draft.period as ProfileMetric["period"] } : {}) }), provenance: draft.provenance, confirmed_by_user: true, applicability: draft.provenance === "unknown" ? "unknown" : draft.provenance === "not_applicable" ? "not_applicable" : "applicable" };
+      const target = ["customer_interviews", "market_size"].includes(field_id) ? "customer_market" : ["cash_balance", "monthly_operating_expense", "runway"].includes(field_id) ? "finance" : ["average_selling_price", "variable_cost_per_unit", "gross_margin", "contribution_margin", "customer_acquisition_cost", "cac_payback_period", "average_contract_value"].includes(field_id) ? "economics" : "product_traction";
+      if (target === "customer_market") profile.customer_market = { ...(profile.customer_market ?? {}), metrics: [...(profile.customer_market?.metrics ?? []), metric] };
+      else if (target === "finance") profile.finance = { ...(profile.finance ?? {}), metrics: [...(profile.finance?.metrics ?? []), metric] };
+      else if (target === "economics") profile.economics = { ...(profile.economics ?? {}), metrics: [...(profile.economics?.metrics ?? []), metric] };
+      else profile.product_traction = { ...(profile.product_traction ?? {}), metrics: [...(profile.product_traction?.metrics ?? []), metric] };
+    }
+    if (Object.keys(profile).some((key) => key !== "profile_schema_version" && key !== "last_updated_at")) c.profile = profile;
     return c;
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (submissionInProgress.current) return;
     if (!country || picked.length === 0 || !title.trim() || concept.trim().length < MIN_CONCEPT || (country === "USA" && !state)) return;
+    const teamNumber = Number(team);
+    if (team.trim() && metricProvenance !== "unknown" && metricProvenance !== "not_applicable" && (!Number.isInteger(teamNumber) || teamNumber < 1 || teamNumber > 500)) {
+      setError("Team size must be a whole number from 1 to 500, or select Unknown.");
+      return;
+    }
+    if (monthlyRevenue.trim() && revenueProvenance !== "unknown" && revenueProvenance !== "not_applicable" && (!Number.isFinite(Number(monthlyRevenue)) || Number(monthlyRevenue) < 0 || !/^[A-Z]{3}$/.test(revenueCurrency))) {
+      setError("Enter a non-negative monthly revenue and a three-letter currency code, or select Unknown.");
+      return;
+    }
+    if (metricDrafts.some((draft) => {
+      const choice = METRIC_CHOICES.find(([id]) => id === draft.field_id);
+      if (!choice) return false;
+      const [, , , needsCurrency, needsPeriod] = choice;
+      const unknown = draft.provenance === "unknown" || draft.provenance === "not_applicable";
+      const numeric = Number(draft.value);
+      const nonNegative = new Set(["growth_rate", "gross_margin", "contribution_margin"]);
+      const percentage = choice[2] === "percent" && draft.field_id !== "growth_rate";
+      return !unknown && (!draft.value.trim() || !Number.isFinite(numeric) || (!nonNegative.has(draft.field_id) && numeric < 0) || (percentage && numeric > 100) || (draft.currency && !/^[A-Z]{3}$/.test(draft.currency)) || (needsCurrency && !/^[A-Z]{3}$/.test(draft.currency)) || (needsPeriod && !draft.period));
+    })) {
+      setError("Complete each added metric with a valid value, currency, and period where requested, or mark it Unknown / Not applicable.");
+      return;
+    }
+    submissionInProgress.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -103,13 +200,14 @@ export default function NewAnalysisFlow({ countries, states, tags }: Props) {
         setError(
           err.status === 429 ? "That was a lot of requests. Wait a minute and try again."
           : err.status === 401 ? "Your session expired. Sign in again."
-          : err.status === 422 ? "One of your answers was not accepted. Go back and check them."
+          : err.status === 422 ? `Please review: ${err.message || "one or more profile fields were not accepted"}`
           : err.status === 503 ? "Saving is unavailable right now. Try again in a moment."
           : err.message,
         );
       } else {
         setError("Could not reach the API. Is it running on port 8000?");
       }
+      submissionInProgress.current = false;
       setBusy(false);
     }
   }
@@ -184,20 +282,79 @@ export default function NewAnalysisFlow({ countries, states, tags }: Props) {
             <label htmlFor="revenue" className="block text-sm text-muted mb-2">How does it make money?</label>
             <input id="revenue" maxLength={200} value={revenue} onChange={(e) => setRevenue(e.target.value)} placeholder="e.g. Monthly subscription" className={input} />
           </div>
-          <fieldset>
-            <legend className="text-sm text-muted mb-2">Where is it today?</legend>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {STAGES.map(([id, label]) => (
-                <button key={id} type="button" aria-pressed={stage === id} onClick={() => setStage(stage === id ? undefined : id)}
-                  className={`${card} ${stage === id ? chosen : idle} text-sm`}>{label}</button>
-              ))}
+          <details className="rounded-xl border border-ink/10 p-4">
+            <summary className="cursor-pointer font-semibold">Structured profile (optional)</summary>
+            <p className="mt-2 text-sm text-muted">These founder-supplied details are saved with your report. They do not change the historical model result.</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="text-sm text-muted">Business model
+                <select value={businessModel} onChange={(e) => setBusinessModel(e.target.value as BusinessModelType | "")} className={`${input} mt-2`}>
+                  <option value="">Not provided</option><option value="b2b_saas">B2B SaaS</option><option value="b2c_saas">B2C SaaS</option><option value="marketplace">Marketplace</option><option value="dtc_ecommerce">DTC / E-commerce</option><option value="hardware">Hardware</option><option value="fintech">Fintech</option><option value="biotech_medtech">Biotech / Medtech</option><option value="services_consulting">Services / Consulting</option><option value="consumer_application">Consumer application</option><option value="platform_developer_tools">Platform / Developer tools</option><option value="other">Other</option><option value="not_yet_determined">Not yet determined</option>
+                </select>
+              </label>
+              <label className="text-sm text-muted">Current stage
+                <select value={profileStage} onChange={(e) => setProfileStage(e.target.value as ProfileStage | "")} className={`${input} mt-2`}>
+                  <option value="">Not provided</option><option value="idea_concept">Idea / Concept</option><option value="validation_customer_discovery">Validation / Customer discovery</option><option value="mvp_product_development">MVP / Product development</option><option value="pre_revenue">Pre-revenue</option><option value="early_revenue">Early revenue</option><option value="early_growth">Early growth</option><option value="scaling">Scaling</option><option value="mature_established">Mature / Established</option><option value="not_sure_yet">Not sure yet</option>
+                </select>
+              </label>
+              <label className="text-sm text-muted">Customer type
+                <select value={customerType} onChange={(e) => setCustomerType(e.target.value as typeof customerType)} className={`${input} mt-2`}><option value="">Not provided</option><option value="b2b">B2B</option><option value="b2c">B2C</option><option value="b2b2c">B2B2C</option><option value="other">Other</option><option value="not_sure_yet">Not sure yet</option></select>
+              </label>
+              <label className="text-sm text-muted">Customer segment (optional)<input value={customerSegment} onChange={(e) => setCustomerSegment(e.target.value)} maxLength={200} className={`${input} mt-2`} placeholder="e.g. independent retailers" /></label>
+              <label className="text-sm text-muted">Problem you are addressing (optional)<textarea value={profileProblem} onChange={(e) => setProfileProblem(e.target.value)} rows={2} maxLength={800} className={`${input} mt-2`} /></label>
+              <label className="text-sm text-muted">How your product addresses it (optional)<textarea value={profileSolution} onChange={(e) => setProfileSolution(e.target.value)} rows={2} maxLength={800} className={`${input} mt-2`} /></label>
+              <label className="text-sm text-muted">Product status
+                <select value={productStatus} onChange={(e) => setProductStatus(e.target.value as typeof productStatus)} className={`${input} mt-2`}><option value="">Not provided</option><option value="concept">Concept</option><option value="prototype">Prototype</option><option value="mvp">MVP</option><option value="beta">Beta</option><option value="launched">Launched</option><option value="not_sure_yet">Not sure yet</option></select>
+              </label>
+              {businessModel && ({ b2b_saas: "Sales cycle context", marketplace: "Marketplace liquidity context", dtc_ecommerce: "Fulfilment context", hardware: "Tooling and production context", fintech: "Financial infrastructure dependencies", biotech_medtech: "Regulatory pathway context", services_consulting: "Delivery capacity context" } as Partial<Record<BusinessModelType, string>>)[businessModel] && <label className="text-sm text-muted">{({ b2b_saas: "Sales cycle context", marketplace: "Marketplace liquidity context", dtc_ecommerce: "Fulfilment context", hardware: "Tooling and production context", fintech: "Financial infrastructure dependencies", biotech_medtech: "Regulatory pathway context", services_consulting: "Delivery capacity context" } as Partial<Record<BusinessModelType, string>>)[businessModel]}<textarea value={modelDetail} onChange={(e) => setModelDetail(e.target.value)} rows={2} maxLength={800} className={`${input} mt-2`} placeholder="Optional context for this business model" /></label>}
+              <details className="sm:col-span-2 rounded-xl border border-ink/10 p-4">
+                <summary className="cursor-pointer font-semibold">More optional profile context</summary>
+                <p className="mt-2 text-xs text-muted">Only answer what fits your business. Blank fields stay unprovided; they are not treated as weaknesses.</p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {[["customer_description", "Who typically uses or buys it?"], ["discovery_evidence", "What have you learned from customer discovery?"], ["willingness_to_pay_evidence", "Any evidence of willingness to pay?"], ["existing_alternatives", "What alternatives do customers use today?"], ["market_size_assumption", "Market-size estimate and its source, if known"], ["customer_validation", "How have you validated the product?"], ["acquisition_channel", "How do customers find you?"], ["pricing_model", "Pricing approach"], ["funding_sources", "Funding sources (optional)"], ["upcoming_milestones", "Upcoming financial or product milestones"], ["team_capabilities", "Relevant team capabilities"], ["capability_gaps", "Known capability gaps"], ["critical_dependencies", "Critical dependencies"], ["suppliers_or_distribution", "Supplier or distribution dependencies"], ["technology_constraints", "Technology or infrastructure constraints"], ["regulatory_context", "Regulatory context, if relevant"]].map(([key, label]) => <label key={key} className="text-sm text-muted">{label}<textarea value={profileExtras[key] ?? ""} onChange={(e) => setProfileExtras((current) => ({ ...current, [key]: e.target.value }))} rows={2} maxLength={800} className={`${input} mt-2`} /></label>)}
+                  <label className="text-sm text-muted">Funding status<select value={fundingStatus} onChange={(e) => setFundingStatus(e.target.value)} className={`${input} mt-2`}><option value="">Not provided</option><option value="bootstrapped">Bootstrapped</option><option value="grants">Grants</option><option value="angel">Angel</option><option value="venture">Venture</option><option value="debt">Debt</option><option value="mixed">Mixed</option><option value="not_funded">Not funded</option><option value="not_sure_yet">Not sure yet</option></select></label>
+                </div>
+              </details>
+              <details className="sm:col-span-2 rounded-xl border border-ink/10 p-4">
+                <summary className="cursor-pointer font-semibold">Optional quantitative evidence</summary>
+                <p className="mt-2 text-xs text-muted">Add only measurements you have. Values stay separate from the model result. Estimated, assumed, unknown, and not-applicable states are retained as selected.</p>
+                <div className="mt-4 space-y-3">
+                  {metricDrafts.map((draft, index) => {
+                    const selected = METRIC_CHOICES.find(([id]) => id === draft.field_id);
+                    const unavailable = new Set(metricDrafts.filter((_, i) => i !== index).map((item) => item.field_id));
+                    return <div key={index} className="rounded-xl border border-ink/10 p-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="text-sm text-muted">Metric<select value={draft.field_id} onChange={(e) => setMetricDrafts((items) => items.map((item, i) => i === index ? { ...item, field_id: e.target.value } : item))} className={`${input} mt-2`}><option value="">Choose a metric</option>{METRIC_CHOICES.filter(([id]) => !unavailable.has(id) || id === draft.field_id).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+                        <label className="text-sm text-muted">Provenance<select value={draft.provenance} onChange={(e) => setMetricDrafts((items) => items.map((item, i) => i === index ? { ...item, provenance: e.target.value as Provenance } : item))} className={`${input} mt-2`}><option value="measured">Measured</option><option value="estimated">Estimated</option><option value="assumed">Assumed</option><option value="unknown">Unknown</option><option value="not_applicable">Not applicable</option></select></label>
+                        <label className="text-sm text-muted">Value{selected ? ` (${selected[2]})` : ""}<input type="number" step="any" value={draft.value} disabled={draft.provenance === "unknown" || draft.provenance === "not_applicable" || !selected} onChange={(e) => setMetricDrafts((items) => items.map((item, i) => i === index ? { ...item, value: e.target.value } : item))} className={`${input} mt-2`} /></label>
+                        {selected?.[3] && <label className="text-sm text-muted">Currency (3-letter code)<input maxLength={3} value={draft.currency} disabled={draft.provenance === "unknown" || draft.provenance === "not_applicable"} onChange={(e) => setMetricDrafts((items) => items.map((item, i) => i === index ? { ...item, currency: e.target.value.toUpperCase() } : item))} className={`${input} mt-2`} /></label>}
+                        {selected?.[4] && <label className="text-sm text-muted">Measurement period<select value={draft.period} disabled={draft.provenance === "unknown" || draft.provenance === "not_applicable"} onChange={(e) => setMetricDrafts((items) => items.map((item, i) => i === index ? { ...item, period: e.target.value } : item))} className={`${input} mt-2`}><option value="">Choose a period</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option></select></label>}
+                      </div>
+                      <button type="button" onClick={() => setMetricDrafts((items) => items.filter((_, i) => i !== index))} className="mt-2 min-h-11 text-sm text-muted underline">Remove metric</button>
+                    </div>;
+                  })}
+                  <button type="button" onClick={() => setMetricDrafts((items) => [...items, { field_id: "", value: "", currency: "USD", provenance: "measured", period: "" }])} disabled={metricDrafts.length >= METRIC_CHOICES.length} className="min-h-11 rounded-full border border-ink/20 px-4 text-sm hover:border-violet disabled:opacity-50">+ Add a metric</button>
+                </div>
+              </details>
+              <label className="text-sm text-muted">Team size provenance
+                <select value={metricProvenance} onChange={(e) => setMetricProvenance(e.target.value as Provenance)} className={`${input} mt-2`}><option value="measured">Measured</option><option value="estimated">Estimated</option><option value="assumed">Assumed</option><option value="unknown">Unknown</option><option value="not_applicable">Not applicable</option></select>
+              </label>
             </div>
-          </fieldset>
+            {metricProvenance !== "unknown" && metricProvenance !== "not_applicable" && <p className="mt-2 text-xs text-muted">Team size stays optional. Enter it above; its provenance is saved separately.</p>}
+          </details>
           <div className="grid sm:grid-cols-2 gap-6">
             <div>
               <label htmlFor="team" className="block text-sm text-muted mb-2">How many people are on the team?</label>
-              <input id="team" type="number" inputMode="numeric" min={1} max={500} value={team} onChange={(e) => setTeam(e.target.value)} placeholder="e.g. 3" className={input} />
+              <input id="team" type="number" inputMode="numeric" min={1} max={500} disabled={metricProvenance === "unknown" || metricProvenance === "not_applicable"} value={team} onChange={(e) => setTeam(e.target.value)} placeholder="e.g. 3" className={input} />
             </div>
+            <fieldset className="rounded-xl border border-ink/10 p-4">
+              <legend className="px-1 text-sm font-semibold">Monthly revenue (optional)</legend>
+              <p className="mb-3 text-xs text-muted">Leave blank if you do not want to share it. An unknown response is not treated as zero.</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="text-sm text-muted">Amount<input type="number" min="0" step="any" value={monthlyRevenue} disabled={revenueProvenance === "unknown" || revenueProvenance === "not_applicable"} onChange={(e) => setMonthlyRevenue(e.target.value)} className={`${input} mt-2`} /></label>
+                <label className="text-sm text-muted">Currency<input value={revenueCurrency} maxLength={3} disabled={revenueProvenance === "unknown" || revenueProvenance === "not_applicable"} onChange={(e) => setRevenueCurrency(e.target.value.toUpperCase())} className={`${input} mt-2`} aria-label="Revenue currency, three letter code" /></label>
+                <label className="text-sm text-muted">Provenance<select value={revenueProvenance} onChange={(e) => setRevenueProvenance(e.target.value as Provenance)} className={`${input} mt-2`}><option value="measured">Measured</option><option value="estimated">Estimated</option><option value="assumed">Assumed</option><option value="unknown">Unknown</option><option value="not_applicable">Not applicable</option></select></label>
+              </div>
+            </fieldset>
             <div>
               <label htmlFor="worry" className="block text-sm text-muted mb-2">What worries you most?</label>
               <input id="worry" maxLength={200} value={worry} onChange={(e) => setWorry(e.target.value)} placeholder="e.g. Running out of cash" className={input} />
@@ -273,7 +430,8 @@ export default function NewAnalysisFlow({ countries, states, tags }: Props) {
           <dl className="rounded-2xl bg-dark-surface border border-ink/10 divide-y divide-ink/10 text-sm">
             {([
               ["Name", title, "name"], ["What it does", concept, "concept"], ["Vision", vision || "Skipped", "vision"],
-              ["Notes", [customer, revenue, stage, team && `${team} people`, worry].filter(Boolean).join(" · ") || "None", "details"],
+              ["Notes", [customer, revenue, team && `${team} people`, worry].filter(Boolean).join(" · ") || "None", "details"],
+              ["Structured profile", [businessModel && businessModel.replaceAll("_", " "), profileStage && profileStage.replaceAll("_", " "), customerType, customerSegment, profileProblem && `Problem: ${profileProblem}`, profileSolution && `Solution: ${profileSolution}`, productStatus, modelDetail, metricProvenance === "unknown" || metricProvenance === "not_applicable" ? `Team size ${metricProvenance}` : team && `${team} people (${metricProvenance})`, revenueProvenance === "unknown" || revenueProvenance === "not_applicable" ? `Revenue ${revenueProvenance}` : monthlyRevenue && `${monthlyRevenue} ${revenueCurrency} / month (${revenueProvenance})`, ...metricDrafts.filter((m) => m.field_id).map((m) => `${METRIC_CHOICES.find(([id]) => id === m.field_id)?.[1] ?? m.field_id}: ${m.provenance === "unknown" || m.provenance === "not_applicable" ? m.provenance : `${m.value || "(value needed)"}${m.currency ? ` ${m.currency}` : ""}${m.period ? ` / ${m.period}` : ""} (${m.provenance})`}`)].filter(Boolean).join(" · ") || "Not provided", "details"],
               ["Place", [place, state ? STATE_NAMES[state] : ""].filter(Boolean).join(", "), "country"],
               ["Industries", picked.join(", "), "tags"],
             ] as [string, string, StepId][]).map(([label, value, id]) => (

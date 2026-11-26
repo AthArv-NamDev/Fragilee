@@ -28,7 +28,7 @@ export default function AnalysisList({ items }: { items: AnalysisSummary[] }) {
       <div className="rounded-2xl border border-dashed border-ink/20 p-10 text-center">
         <h2 className="font-display text-2xl mb-2">Your startup journey starts here.</h2>
         <p className="mx-auto max-w-xl text-muted mb-6">Create your first analysis to explore historical patterns and identify assumptions worth validating.</p>
-        <Link href="/new" className="inline-flex min-h-12 items-center rounded-full bg-sage px-6 font-semibold text-[var(--sage-ink)]">Test your idea</Link>
+        <Link href="/new" className="inline-flex min-h-12 items-center rounded-full bg-sage px-6 font-semibold button-label-on-sage">Test your idea</Link>
       </div>
     );
   }

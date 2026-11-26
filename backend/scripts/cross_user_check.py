@@ -1,24 +1,43 @@
-"""Checks that two different users cannot see or touch each other's analyses, on your real server.
+"""Cross-user checks are restricted to an explicitly confirmed staging project.
 
-Easiest way (no tokens to copy, nothing in your shell history):
-
-    python scripts/cross_user_check.py [server_url]
-
-It asks for the email and password of two test users, signs them in with Supabase, then saves one analysis
-as A, tries to read, list, delete and reuse it as B, and deletes it again. It reads SUPABASE_URL and
-SUPABASE_ANON_KEY from backend/.env. Passwords are typed hidden and are never printed or stored.
-
-Alternative: pass ready-made tokens with TOKEN_A and TOKEN_B (access_token values only). They expire after an hour.
+This script creates and deletes a disposable analysis. It will not read backend/.env,
+accept an arbitrary API URL, or run without both staging confirmations.
 """
+import argparse
 import base64
 import getpass
 import json
 import os
+from pathlib import Path
 import sys
 
 import httpx
 
-URL = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from staging_config import StagingConfigError, load_staging_config  # noqa: E402
+
+
+def staging_startup():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--confirm-staging-project-ref", required=True,
+                        help="must exactly match the non-Production staging project ref")
+    parser.add_argument("--confirm-cleanup", action="store_true",
+                        help="confirm creation and deletion of a disposable staging analysis")
+    args = parser.parse_args()
+    if not args.confirm_cleanup:
+        parser.error("--confirm-cleanup is required because this check creates and deletes a staging analysis")
+    try:
+        frontend, backend, project_ref = load_staging_config()
+    except StagingConfigError as exc:
+        parser.error(f"staging configuration rejected: {exc}")
+    if args.confirm_staging_project_ref != project_ref:
+        parser.error("the confirmed project reference does not match the configured staging project")
+    os.environ.update(backend)
+    return "http://127.0.0.1:8001", project_ref
+
+
+URL, STAGING_PROJECT_REF = staging_startup()
 STAGE2 = {"category": "software", "state": "CA", "funding_total_usd": 250000, "funding_rounds": 2, "has_VC": False,
           "has_angel": True, "has_roundA": True, "has_roundB": False, "has_roundC": False, "has_roundD": False,
           "avg_participants": 2.0, "relationships": 5, "age_first_funding_year": 1.0, "age_last_funding_year": 2.0}
@@ -26,14 +45,9 @@ STAGE2 = {"category": "software", "state": "CA", "funding_total_usd": 250000, "f
 
 def sign_in(label):
     """Ask for an email and password, and return a fresh access token from Supabase."""
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"))
-    except ImportError:
-        pass
     base, anon = os.environ.get("SUPABASE_URL", "").rstrip("/"), os.environ.get("SUPABASE_ANON_KEY", "")
     if not base or not anon:
-        sys.exit("SUPABASE_URL and SUPABASE_ANON_KEY must be set (in backend/.env), or pass TOKEN_A and TOKEN_B instead.")
+        sys.exit("Staging SUPABASE_URL and SUPABASE_ANON_KEY are required in backend/.env.staging.")
     email = os.environ.get(f"EMAIL_{label}") or input(f"Email of test user {label}: ").strip()
     password = os.environ.get(f"PASSWORD_{label}") or getpass.getpass(f"Password of {email} (hidden): ")
     try:
@@ -41,7 +55,7 @@ def sign_in(label):
                        headers={"apikey": anon, "Content-Type": "application/json"},
                        json={"email": email, "password": password})
     except httpx.TransportError:
-        sys.exit(f"Cannot reach Supabase at {base}. Check SUPABASE_URL.")
+        sys.exit(f"Cannot reach the configured staging Supabase project {STAGING_PROJECT_REF}.")
     if r.status_code != 200:
         sys.exit(f"Sign-in failed for user {label} ({r.status_code}): wrong email or password, or the user is not confirmed.")
     return r.json()["access_token"]

@@ -1,0 +1,32 @@
+# Local-only Supabase project. Do not run `supabase link` for this directory.
+project_id = "fragilee-local"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3001"
+additional_redirect_urls = ["http://localhost:3001/auth/callback"]
+jwt_expiry = 3600
+
+[storage]
+enabled = true
+
+[local_smtp]
+enabled = true
+port = 54324
+smtp_port = 54325

@@ -43,7 +43,7 @@ export default function GuidePage() {
       </div>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-ink/10 bg-ink/5 p-5">
         <p className="max-w-xl text-sm text-muted">A useful assessment is honest about what it knows and what still needs checking.</p>
-        <Link href="/new" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold text-[var(--sage-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet">Test an idea <span aria-hidden="true">↗</span></Link>
+        <Link href="/new" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold button-label-on-sage focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet">Test an idea <span aria-hidden="true">↗</span></Link>
       </div>
     </main>
   );

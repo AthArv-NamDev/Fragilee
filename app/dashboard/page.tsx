@@ -15,7 +15,7 @@ export default async function DashboardPage() {
       <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 size-72 rounded-full bg-coral/10 blur-3xl"/>
       <div className="relative flex flex-wrap items-end justify-between gap-6">
         <div><p className="eyebrow text-coral">Fragilee / dashboard</p><h1 className="editorial-title mt-3 max-w-4xl font-display">Welcome <span className="text-coral">back.</span></h1><p className="mt-4 max-w-2xl text-sm text-muted">Your saved startup reads, model traces and source trails live here.</p></div>
-        <Link href="/new" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold text-[var(--sage-ink)] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral">Test a new idea <span aria-hidden="true">↗</span></Link>
+        <Link href="/new" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold button-label-on-sage transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral">Test a new idea <span aria-hidden="true">↗</span></Link>
       </div>
     </section>
 
@@ -29,7 +29,7 @@ export default async function DashboardPage() {
         <span aria-hidden="true" className="mx-auto grid size-16 place-items-center rounded-full border border-coral/40 bg-coral-soft font-display text-2xl text-coral">F.</span>
         <h2 className="mt-5 font-display text-3xl">Your startup journey starts here.</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-muted">Create your first analysis to explore historical patterns and identify assumptions worth validating.</p>
-        <Link href="/new" className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold text-[var(--sage-ink)]">Test your idea <span aria-hidden="true">↗</span></Link>
+        <Link href="/new" className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-sage px-6 text-sm font-semibold button-label-on-sage">Test your idea <span aria-hidden="true">↗</span></Link>
       </section> : <AnalysisList items={result.data}/>}
       {result.data.length >= PAGE_SIZE && <p className="mt-4 text-xs text-muted">Showing your latest {PAGE_SIZE} saved analyses. Open full history for search and filters.</p>}
     </>}

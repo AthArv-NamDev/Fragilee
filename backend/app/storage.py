@@ -3,6 +3,8 @@
 SupabaseStore talks to the database as the signed-in USER (it forwards their token), so Postgres
 row-level security enforces 'only your own rows' independently of this code. MemoryStore is for tests.
 """
+from __future__ import annotations
+
 import logging
 import re
 import uuid

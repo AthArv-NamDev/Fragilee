@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-/* Fragilee v2 design tokens: the light variant uses the supplied cream/ink pair;
-   dark values match design/out/v2-design-system.html. */
+/* Fragilee v2 design tokens shared by the light and dark themes. */
 :root,
 html[data-theme="light"] {
   color-scheme: light;

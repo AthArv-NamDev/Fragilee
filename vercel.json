@@ -19,7 +19,7 @@
       "entrypoint": "app.main:app",
       "functions": {
         "app/main.py": {
-          "includeFiles": ["app/**", "models/**", "data/**"]
+          "includeFiles": "{app/**,models/**,data/**}"
         }
       }
     }

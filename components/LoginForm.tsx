@@ -27,19 +27,25 @@ function readableAuthError(error: unknown, mode: Mode) {
   if (authError?.status && authError.status >= 500) {
     return "The authentication service is temporarily unavailable. Please try again shortly.";
   }
+  if (/rate limit|too many requests/i.test(message)) {
+    return "Too many attempts were made. Wait a few minutes, then try again.";
+  }
+  if (/email not confirmed/i.test(message)) {
+    return "Your email is not confirmed yet. Check your inbox or resend the confirmation email below.";
+  }
   if (mode === "signup" && /already registered|user exists/i.test(message)) {
     return "An account may already exist for this email. Try signing in instead.";
   }
   return message || "Something went wrong. Please try again.";
 }
 
-export default function LoginForm({ next, initialMode, initialTheme, authError }: { next: string | null; initialMode: Mode; initialTheme: ThemeName; authError?: boolean }) {
+export default function LoginForm({ next, initialMode, initialTheme, authError }: { next: string | null; initialMode: Mode; initialTheme: ThemeName; authError?: "confirmation" | "oauth" }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(authError ? "That confirmation link is invalid or expired. Sign in or request a new signup email." : null);
+  const [error, setError] = useState<string | null>(authError === "confirmation" ? "That confirmation link is invalid or expired. Sign in or request a new signup email." : authError === "oauth" ? "Google sign-in did not complete. You can try again or use email and password." : null);
   const [notice, setNotice] = useState<string | null>(null);
 
   function switchMode(next: Mode) {
@@ -78,6 +84,74 @@ export default function LoginForm({ next, initialMode, initialTheme, authError }
       }
     } catch (err) {
       setError(readableAuthError(err, mode));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function callbackUrl(destination: string) {
+    const callback = new URL("/auth/callback", window.location.origin);
+    callback.searchParams.set("next", destination);
+    return callback.toString();
+  }
+
+  async function continueWithGoogle() {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const { error } = await createClient().auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: callbackUrl(next ?? (mode === "signin" ? LANDING_AFTER_LOGIN : LANDING_AFTER_SIGNUP)) },
+      });
+      if (error) throw error;
+    } catch (err) {
+      setError(readableAuthError(err, mode));
+      setBusy(false);
+    }
+  }
+
+  async function resendConfirmation() {
+    setError(null);
+    setNotice(null);
+    if (!email.trim()) {
+      setError("Enter your email address first, then request a new confirmation link.");
+      document.getElementById("email")?.focus();
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await createClient().auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: { emailRedirectTo: callbackUrl(next ?? LANDING_AFTER_SIGNUP) },
+      });
+      if (error) throw error;
+      setNotice("If this email has a pending signup, a fresh confirmation link is on its way. Use the newest email; older links may have expired.");
+    } catch (err) {
+      setError(readableAuthError(err, "signup"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendPasswordReset() {
+    setError(null);
+    setNotice(null);
+    if (!email.trim()) {
+      setError("Enter your account email first, then request a password reset.");
+      document.getElementById("email")?.focus();
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await createClient().auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: callbackUrl("/reset-password"),
+      });
+      if (error) throw error;
+      setNotice("If an account can be recovered with that email, a password reset link is on its way.");
+    } catch (err) {
+      setError(readableAuthError(err, "signin"));
     } finally {
       setBusy(false);
     }
@@ -135,6 +209,7 @@ export default function LoginForm({ next, initialMode, initialTheme, authError }
                 <input id="password" type="password" required minLength={mode === "signup" ? 8 : undefined}
                   autoComplete={mode === "signin" ? "current-password" : "new-password"} placeholder="••••••••"
                   value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
+                {mode === "signin" && <button type="button" disabled={busy} onClick={sendPasswordReset} className="mt-2 min-h-11 text-sm font-medium text-violet-text underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-violet disabled:opacity-60">Forgot password?</button>}
               </div>
 
               <div aria-live="polite" className="min-h-5 text-sm">
@@ -147,6 +222,11 @@ export default function LoginForm({ next, initialMode, initialTheme, authError }
                 {busy ? "One moment…" : mode === "signin" ? "Sign in" : "Sign up"}
               </button>
             </form>
+            <button type="button" disabled={busy} onClick={resendConfirmation} className="mt-3 min-h-11 w-full text-sm font-medium text-violet-text underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-violet disabled:opacity-60">{mode === "signup" ? "Didn't get the email? Resend confirmation" : "Resend confirmation email"}</button>
+            <div className="my-5 flex items-center gap-3 text-xs text-muted" aria-hidden="true"><span className="h-px flex-1 bg-ink/15" /><span>OR</span><span className="h-px flex-1 bg-ink/15" /></div>
+            <button type="button" disabled={busy} onClick={continueWithGoogle} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-full border border-ink/20 bg-dark-surface px-6 font-semibold text-text transition-colors hover:bg-ink/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet disabled:opacity-60" aria-label="Continue with Google">
+              <span aria-hidden="true" className="font-bold text-base">G</span>{busy ? "One moment…" : "Continue with Google"}
+            </button>
             <p className="mt-6 text-center text-xs text-muted">Your saved analyses are private to your account.</p>
           </div>
         </div>

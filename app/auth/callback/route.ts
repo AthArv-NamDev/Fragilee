@@ -8,6 +8,10 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const destination = safeNext(request.nextUrl.searchParams.get("next")) ?? "/dashboard";
 
+  // Provider denials and expired/invalid links return query errors instead of a PKCE code.
+  if (request.nextUrl.searchParams.has("error")) {
+    return NextResponse.redirect(new URL("/login?error=oauth", request.url));
+  }
   if (!code) return NextResponse.redirect(new URL("/login?error=confirmation", request.url));
 
   const supabase = await createClient();

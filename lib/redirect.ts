@@ -1,5 +1,5 @@
 // Where to go after signing in. Only our own private pages are allowed, so a crafted link can never send someone elsewhere.
-const ALLOWED = ["/dashboard", "/new", "/history", "/guide", "/settings", "/analysis"];
+const ALLOWED = ["/dashboard", "/new", "/history", "/guide", "/settings", "/analysis", "/reset-password"];
 
 export function safeNext(value: string | null | undefined): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\") || /[\u0000-\u001f]/.test(value)) return null;
